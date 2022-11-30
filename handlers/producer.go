@@ -21,7 +21,7 @@ func (p Handler) produce(message []byte, hdrs memphis.Headers) error {
 
 }
 
-func (p Handler) HandleMessageHdrs(bodyReq []byte, hdrs memphis.Headers) ([]byte, memphis.Headers, error) {
+func handleMessageHdrs(bodyReq []byte, hdrs memphis.Headers) ([]byte, memphis.Headers, error) {
 	type body struct {
 		Message string `json:"message"`
 		Headers string `json:"headers"`
@@ -56,73 +56,74 @@ func (p Handler) HandleMessageHdrs(bodyReq []byte, hdrs memphis.Headers) ([]byte
 	return message, hdrs, nil
 }
 
-func (p Handler) HandleMessage(c *fiber.Ctx) error {
-	bodyReq := c.Body()
-	contentType := string(c.Request().Header.ContentType())
-	var message []byte
-	var err error
-	hdrs := memphis.Headers{}
-	hdrs.New()
-	caseText := strings.Contains(contentType, "text")
+func CreateHandleMessage(p *memphis.Producer) func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		bodyReq := c.Body()
+		contentType := string(c.Request().Header.ContentType())
+		var message []byte
+		var err error
+		hdrs := memphis.Headers{}
+		hdrs.New()
+		caseText := strings.Contains(contentType, "text")
 
-	if caseText {
-		contentType = "text/"
-	}
-
-	switch contentType {
-	case "application/json":
-		message, hdrs, err = p.HandleMessageHdrs(bodyReq, hdrs)
-		if err != nil {
-			return err
-		}
-	case "text/":
-		message, hdrs, err = p.HandleMessageHdrs(bodyReq, hdrs)
-		if err != nil {
-			return err
-		}
-	case "application/x-protobuf":
-		msg := &Msg{}
-		err := proto.Unmarshal(bodyReq, msg)
-		if err != nil {
-			log.Fatal("unmarshaling error: ", err)
+		if caseText {
+			contentType = "text/"
 		}
 
-		message, err = json.Marshal(msg.Message)
-		if err != nil {
-			return err
-		}
-
-		var headers map[string]string
-		err = json.Unmarshal([]byte(msg.Headers), &headers)
-		if err != nil {
-			return err
-		}
-
-		var k, v string
-		for key, value := range headers {
-			k = key
-			v = value
-			err = hdrs.Add(k, v)
+		switch contentType {
+		case "application/json":
+			message, hdrs, err = handleMessageHdrs(bodyReq, hdrs)
 			if err != nil {
 				return err
 			}
-		}
-	default:
-		return errors.New("unsupported content type")
-	}
+		case "text/":
+			message, hdrs, err = handleMessageHdrs(bodyReq, hdrs)
+			if err != nil {
+				return err
+			}
+		case "application/x-protobuf":
+			msg := &Msg{}
+			err := proto.Unmarshal(bodyReq, msg)
+			if err != nil {
+				log.Fatal("unmarshaling error: ", err)
+			}
 
-	if err := p.produce(message, hdrs); err != nil {
-		c.Status(400)
+			message, err = json.Marshal(msg.Message)
+			if err != nil {
+				return err
+			}
+
+			var headers map[string]string
+			err = json.Unmarshal([]byte(msg.Headers), &headers)
+			if err != nil {
+				return err
+			}
+
+			var k, v string
+			for key, value := range headers {
+				k = key
+				v = value
+				err = hdrs.Add(k, v)
+				if err != nil {
+					return err
+				}
+			}
+		default:
+			return errors.New("unsupported content type")
+		}
+
+		if err := p.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
+			c.Status(400)
+			return c.JSON(&fiber.Map{
+				"success": false,
+				"error":   err.Error(),
+			})
+		}
+
+		c.Status(200)
 		return c.JSON(&fiber.Map{
-			"success": false,
-			"error":   err.Error(),
+			"success": true,
+			"error":   nil,
 		})
 	}
-
-	c.Status(200)
-	return c.JSON(&fiber.Map{
-		"success": true,
-		"error":   nil,
-	})
-
 }

@@ -9,8 +9,7 @@ import (
 
 // SetupRoutes setup router api
 func SetupRoutes(app *fiber.App, producer *memphis.Producer) {
-	handler := handler.Handler{producer}
 
 	api := app.Group("/", logger.New())
-	api.Post("/", handler.HandleMessage)
+	api.Post("/", handler.CreateHandleMessage(producer))
 }
