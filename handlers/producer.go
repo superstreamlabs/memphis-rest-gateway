@@ -44,14 +44,29 @@ func handleJsonMessage(bodyReq []byte, headers map[string]string) ([]byte, memph
 	return message, hdrs, nil
 }
 
-func CreateHandleMessage(producer *memphis.Producer) func(*fiber.Ctx) error {
+func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
+	producers := make(map[string]*memphis.Producer)
 	return func(c *fiber.Ctx) error {
+		stationName := c.Params("stationName")
+		producerName := c.Params("producerName")
+		var producer *memphis.Producer
+		var err error
+
+		if len(producers) == 0 || producers[stationName].Name != producerName {
+			producer, err = conn.CreateProducer(stationName, producerName)
+			if err != nil {
+				return err
+			}
+			producers[stationName] = producer
+		} else {
+			producer = producers[stationName]
+		}
+
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
 		var message []byte
 		hdrs := memphis.Headers{}
-		var err error
 		caseText := strings.Contains(contentType, "text")
 		if caseText {
 			contentType = "text/"

@@ -20,12 +20,7 @@ func main() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	producer, err := conn.CreateProducer("test-fiber-go", "simple_go_producer")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
 
-	router.SetupRoutes(app, producer)
+	router.SetupRoutes(app, conn)
 	app.Listen(":3000")
 }
