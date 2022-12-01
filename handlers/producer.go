@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -70,6 +72,66 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   err.Error(),
+				})
+			}
+		default:
+			return errors.New("unsupported content type")
+		}
+
+		c.Status(200)
+		return c.JSON(&fiber.Map{
+			"success": true,
+			"error":   nil,
+		})
+	}
+}
+
+func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		stationName := c.Params("stationName")
+		var producer *memphis.Producer
+
+		producer, err := createProducer(conn, producers, stationName)
+		if err != nil {
+			return err
+		}
+
+		bodyReq := c.Body()
+		headers := c.GetReqHeaders()
+		contentType := string(c.Request().Header.ContentType())
+
+		switch contentType {
+		case "application/json":
+			var batchReq []map[string]string
+			err := json.Unmarshal(bodyReq, &batchReq)
+			if err != nil {
+				return errors.New("unsupported request")
+			}
+			hdrs, err := handleHeaders(headers)
+			if err != nil {
+				return err
+			}
+
+			errCount := 0
+			var lastErr error
+			for _, msg := range batchReq {
+				rawRes, err := json.Marshal(msg)
+				if err != nil {
+					errCount++
+					lastErr = err
+					continue
+				}
+				if err := producer.Produce(rawRes, memphis.MsgHeaders(hdrs)); err != nil {
+					errCount++
+					lastErr = err
+				}
+			}
+
+			if errCount > 0 {
+				c.Status(400)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   fmt.Sprintf("send failed for %d/%d messages, last error: %v", errCount, len(batchReq), lastErr.Error()),
 				})
 			}
 		default:
