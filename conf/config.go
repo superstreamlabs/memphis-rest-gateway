@@ -12,7 +12,7 @@ type Configuration struct {
 	HTTP_PORT                      string
 	ROOT_USER                      string
 	CONNECTION_TOKEN               string
-	MEMPHIS_HOST                      string
+	MEMPHIS_HOST                   string
 }
 
 func GetConfig() Configuration {
