@@ -29,7 +29,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 
 	}
-	conn, err := memphis.Connect(body.Host, body.Username, body.ConnectionToken)
+	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Wrong credentials",
