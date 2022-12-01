@@ -1,5 +1,5 @@
 {
-  "HTTP_PORT": ":3000",
+  "HTTP_PORT": "3000",
   "MEMPHIS_HOST": "localhost",
   "ROOT_USER": "root",
   "CONNECTION_TOKEN": "memphis",
