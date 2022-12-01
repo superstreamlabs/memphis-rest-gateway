@@ -21,5 +21,5 @@ func main() {
 	}
 
 	app := router.SetupRoutes(conn)
-	app.Listen(configuration.HTTP_PORT)
+	app.Listen(":" + configuration.HTTP_PORT)
 }
