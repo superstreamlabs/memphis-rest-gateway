@@ -48,12 +48,12 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 	producers := make(map[string]*memphis.Producer)
 	return func(c *fiber.Ctx) error {
 		stationName := c.Params("stationName")
-		producerName := c.Params("producerName")
+		producerName := "http_proxy"
 		var producer *memphis.Producer
 		var err error
 
-		if len(producers) == 0 || producers[stationName].Name != producerName {
-			producer, err = conn.CreateProducer(stationName, producerName)
+		if _, ok := producers[stationName]; !ok {
+			producer, err = conn.CreateProducer(stationName, producerName, memphis.ProducerGenUniqueSuffix())
 			if err != nil {
 				return err
 			}
