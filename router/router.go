@@ -9,6 +9,6 @@ import (
 
 // SetupRoutes setup router api
 func SetupRoutes(app *fiber.App, conn *memphis.Conn) {
-	api := app.Group("/", logger.New())
-	api.Post("/stations/:stationName/produce/single", handler.CreateHandleMessage(conn))
+	api := app.Group("/stations", logger.New())
+	api.Post("/:stationName/produce/single", handler.CreateHandleMessage(conn))
 }

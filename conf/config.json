@@ -1,6 +1,6 @@
 {
   "HTTP_PORT": ":3000",
-  "HTTP_HOST": "localhost",
+  "MEMPHIS_HOST": "localhost",
   "ROOT_USER": "root",
   "CONNECTION_TOKEN": "memphis",
   "JWT_EXPIRES_IN_MINUTES": 15,

@@ -17,7 +17,7 @@ func main() {
 	app.Use(cors.New())
 
 	configuration := conf.GetConfig()
-	conn, err := memphis.Connect(configuration.HTTP_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
+	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)

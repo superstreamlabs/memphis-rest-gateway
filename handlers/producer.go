@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/memphisdev/memphis.go"
 )
+
+var producers = make(map[string]*memphis.Producer)
 
 func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	hdrs := memphis.Headers{}
@@ -22,44 +23,31 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	return hdrs, nil
 }
 
-func handleJsonMessage(bodyReq []byte, headers map[string]string) ([]byte, memphis.Headers, error) {
-	type body struct {
-		Message string `json:"message"`
-	}
-	var bodyRequest body
-	err := json.Unmarshal(bodyReq, &bodyRequest)
-	if err != nil {
-		return nil, memphis.Headers{}, err
+func createProducer(conn *memphis.Conn, producers map[string]*memphis.Producer, stationName string) (*memphis.Producer, error) {
+	producerName := "http_proxy"
+	var producer *memphis.Producer
+	var err error
+	if _, ok := producers[stationName]; !ok {
+		producer, err = conn.CreateProducer(stationName, producerName, memphis.ProducerGenUniqueSuffix())
+		if err != nil {
+			return nil, err
+		}
+		producers[stationName] = producer
+	} else {
+		producer = producers[stationName]
 	}
 
-	hdrs, err := handleHeaders(headers)
-	if err != nil {
-		return nil, memphis.Headers{}, err
-	}
-
-	message, err := json.Marshal(bodyRequest.Message)
-	if err != nil {
-		return nil, memphis.Headers{}, err
-	}
-	return message, hdrs, nil
+	return producer, nil
 }
 
 func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
-	producers := make(map[string]*memphis.Producer)
 	return func(c *fiber.Ctx) error {
 		stationName := c.Params("stationName")
-		producerName := "http_proxy"
 		var producer *memphis.Producer
-		var err error
 
-		if _, ok := producers[stationName]; !ok {
-			producer, err = conn.CreateProducer(stationName, producerName, memphis.ProducerGenUniqueSuffix())
-			if err != nil {
-				return err
-			}
-			producers[stationName] = producer
-		} else {
-			producer = producers[stationName]
+		producer, err := createProducer(conn, producers, stationName)
+		if err != nil {
+			return err
 		}
 
 		bodyReq := c.Body()
@@ -73,18 +61,7 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 		}
 
 		switch contentType {
-		case "application/json":
-			message, hdrs, err = handleJsonMessage(bodyReq, headers)
-			if err != nil {
-				return err
-			}
-		case "text/":
-			message = bodyReq
-			hdrs, err = handleHeaders(headers)
-			if err != nil {
-				return err
-			}
-		case "application/x-protobuf":
+		case "application/json", "text/", "application/x-protobuf":
 			message = bodyReq
 			hdrs, err = handleHeaders(headers)
 			if err != nil {
