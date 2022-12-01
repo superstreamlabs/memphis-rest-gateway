@@ -14,9 +14,7 @@ type ValidationError struct {
 }
 
 func InitializeValidations() {
-
 	Validator = validator.New()
-
 }
 
 func Validate(schema any) []ValidationError {
@@ -31,7 +29,6 @@ func Validate(schema any) []ValidationError {
 			errors = append(errors, ValidationError{Field: f.Field(), Reason: tErr})
 		}
 		return errors
-
 	}
 	return nil
 }

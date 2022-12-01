@@ -4,6 +4,7 @@ import (
 	"http-proxy/conf"
 	"http-proxy/models"
 	"http-proxy/utils"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -21,18 +22,21 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
-
 	}
 	if err := utils.Validate(body); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"message": err,
 		})
-
 	}
 	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
 	if err != nil {
+		if strings.Contains(err.Error(), "Authorization Violation") {
+			return c.Status(401).JSON(fiber.Map{
+				"message": "Wrong credentials",
+			})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Wrong credentials",
+			"message": "Server error",
 		})
 	}
 	conn.Close()
@@ -71,7 +75,6 @@ func createTokens() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-
 	return token, refreshToken, nil
 }
 
