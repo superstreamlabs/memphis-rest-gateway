@@ -7,15 +7,12 @@ import (
 
 	"os"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/memphisdev/memphis.go"
 )
 
-func main() {
-	app := fiber.New()
-	app.Use(cors.New())
+var configuration = conf.GetConfig()
 
+func main() {
 	configuration := conf.GetConfig()
 	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
 	if err != nil {
@@ -23,6 +20,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	router.SetupRoutes(app, conn)
+	app := router.SetupRoutes(conn)
 	app.Listen(configuration.HTTP_PORT)
 }
