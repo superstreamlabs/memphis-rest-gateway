@@ -9,6 +9,10 @@ type Configuration struct {
 	JWT_EXPIRES_IN_MINUTES         int
 	REFRESH_JWT_SECRET             string
 	REFRESH_JWT_EXPIRES_IN_MINUTES int
+	HTTP_PORT                      string
+	ROOT_USER                      string
+	CONNECTION_TOKEN               string
+	HTTP_HOST                      string
 }
 
 func GetConfig() Configuration {
