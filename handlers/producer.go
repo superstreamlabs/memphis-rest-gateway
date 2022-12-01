@@ -102,10 +102,10 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 
 		switch contentType {
 		case "application/json":
-			var batchReq []string
+			var batchReq []map[string]string
 			err := json.Unmarshal(bodyReq, &batchReq)
 			if err != nil {
-				return err
+				return errors.New("unsupported request")
 			}
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
@@ -113,9 +113,17 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 			}
 
 			errCount := 0
+			var lastErr error
 			for _, msg := range batchReq {
-				if err = producer.Produce([]byte(msg), memphis.MsgHeaders(hdrs)); err != nil {
+				rawRes, err := json.Marshal(msg)
+				if err != nil {
 					errCount++
+					lastErr = err
+					continue
+				}
+				if err := producer.Produce(rawRes, memphis.MsgHeaders(hdrs)); err != nil {
+					errCount++
+					lastErr = err
 				}
 			}
 
@@ -123,7 +131,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 				c.Status(400)
 				return c.JSON(&fiber.Map{
 					"success": false,
-					"error":   fmt.Sprintf("send failed for %d/%d message, last error %v", errCount, len(batchReq), err.Error()),
+					"error":   fmt.Sprintf("send failed for %d/%d messages, last error: %v", errCount, len(batchReq), lastErr.Error()),
 				})
 			}
 		default:
