@@ -5,10 +5,12 @@ go 1.18
 require (
 	github.com/gofiber/fiber/v2 v2.40.1
 	github.com/memphisdev/memphis.go v0.1.6
+	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
 
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
@@ -26,4 +28,5 @@ require (
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/time v0.2.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

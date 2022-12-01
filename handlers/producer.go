@@ -1,123 +1,79 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"log"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/memphisdev/memphis.go"
-	"google.golang.org/protobuf/proto"
 )
 
-type Handler struct{ P *memphis.Producer }
+var producers = make(map[string]*memphis.Producer)
 
-func (p Handler) produce(message []byte, hdrs memphis.Headers) error {
-	if err := p.P.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
-		return err
-	}
-	return nil
+func handleHeaders(headers map[string]string) (memphis.Headers, error) {
+	hdrs := memphis.Headers{}
+	hdrs.New()
 
-}
-
-func handleMessageHdrs(bodyReq []byte, hdrs memphis.Headers) ([]byte, memphis.Headers, error) {
-	type body struct {
-		Message string `json:"message"`
-		Headers string `json:"headers"`
-	}
-	var b body
-	err := json.Unmarshal(bodyReq, &b)
-	if err != nil {
-		return nil, memphis.Headers{}, err
-	}
-
-	var headers map[string]string
-	err = json.Unmarshal([]byte(b.Headers), &headers)
-	if err != nil {
-		return nil, memphis.Headers{}, err
-	}
-
-	var k, v string
 	for key, value := range headers {
-		k = key
-		v = value
-
-		err = hdrs.Add(k, v)
+		err := hdrs.Add(key, value)
 		if err != nil {
-			return nil, memphis.Headers{}, err
+			return memphis.Headers{}, err
 		}
 	}
-
-	message, err := json.Marshal(b.Message)
-	if err != nil {
-		return nil, memphis.Headers{}, err
-	}
-	return message, hdrs, nil
+	return hdrs, nil
 }
 
-func CreateHandleMessage(p *memphis.Producer) func(*fiber.Ctx) error {
-	return func(c *fiber.Ctx) error {
-		bodyReq := c.Body()
-		contentType := string(c.Request().Header.ContentType())
-		var message []byte
-		var err error
-		hdrs := memphis.Headers{}
-		hdrs.New()
-		caseText := strings.Contains(contentType, "text")
+func createProducer(conn *memphis.Conn, producers map[string]*memphis.Producer, stationName string) (*memphis.Producer, error) {
+	producerName := "http_proxy"
+	var producer *memphis.Producer
+	var err error
+	if _, ok := producers[stationName]; !ok {
+		producer, err = conn.CreateProducer(stationName, producerName, memphis.ProducerGenUniqueSuffix())
+		if err != nil {
+			return nil, err
+		}
+		producers[stationName] = producer
+	} else {
+		producer = producers[stationName]
+	}
 
+	return producer, nil
+}
+
+func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		stationName := c.Params("stationName")
+		var producer *memphis.Producer
+
+		producer, err := createProducer(conn, producers, stationName)
+		if err != nil {
+			return err
+		}
+
+		bodyReq := c.Body()
+		headers := c.GetReqHeaders()
+		contentType := string(c.Request().Header.ContentType())
+		caseText := strings.Contains(contentType, "text")
 		if caseText {
 			contentType = "text/"
 		}
 
 		switch contentType {
-		case "application/json":
-			message, hdrs, err = handleMessageHdrs(bodyReq, hdrs)
+		case "application/json", "text/", "application/x-protobuf":
+			message := bodyReq
+			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				return err
 			}
-		case "text/":
-			message, hdrs, err = handleMessageHdrs(bodyReq, hdrs)
-			if err != nil {
-				return err
-			}
-		case "application/x-protobuf":
-			msg := &Msg{}
-			err := proto.Unmarshal(bodyReq, msg)
-			if err != nil {
-				log.Fatal("unmarshaling error: ", err)
-			}
-
-			message, err = json.Marshal(msg.Message)
-			if err != nil {
-				return err
-			}
-
-			var headers map[string]string
-			err = json.Unmarshal([]byte(msg.Headers), &headers)
-			if err != nil {
-				return err
-			}
-
-			var k, v string
-			for key, value := range headers {
-				k = key
-				v = value
-				err = hdrs.Add(k, v)
-				if err != nil {
-					return err
-				}
+			if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
+				c.Status(400)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   err.Error(),
+				})
 			}
 		default:
 			return errors.New("unsupported content type")
-		}
-
-		if err := p.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
-			c.Status(400)
-			return c.JSON(&fiber.Map{
-				"success": false,
-				"error":   err.Error(),
-			})
 		}
 
 		c.Status(200)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"http-proxy/conf"
 	"http-proxy/router"
 
 	"os"
@@ -15,17 +16,13 @@ func main() {
 	app := fiber.New()
 	app.Use(cors.New())
 
-	conn, err := memphis.Connect("localhost", "root", "memphis")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	producer, err := conn.CreateProducer("test-fiber-go", "simple_go_producer")
+	configuration := conf.GetConfig()
+	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	router.SetupRoutes(app, producer)
-	app.Listen(":3000")
+	router.SetupRoutes(app, conn)
+	app.Listen(configuration.HTTP_PORT)
 }
