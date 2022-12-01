@@ -53,8 +53,6 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
-		var message []byte
-		hdrs := memphis.Headers{}
 		caseText := strings.Contains(contentType, "text")
 		if caseText {
 			contentType = "text/"
@@ -62,21 +60,20 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 
 		switch contentType {
 		case "application/json", "text/", "application/x-protobuf":
-			message = bodyReq
-			hdrs, err = handleHeaders(headers)
+			message := bodyReq
+			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				return err
 			}
+			if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
+				c.Status(400)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   err.Error(),
+				})
+			}
 		default:
 			return errors.New("unsupported content type")
-		}
-
-		if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
-			c.Status(400)
-			return c.JSON(&fiber.Map{
-				"success": false,
-				"error":   err.Error(),
-			})
 		}
 
 		c.Status(200)
