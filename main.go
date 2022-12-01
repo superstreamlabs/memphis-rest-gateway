@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"http-proxy/conf"
 	"http-proxy/router"
-	"time"
 
 	"os"
 
@@ -17,7 +16,6 @@ func main() {
 	app := fiber.New()
 	app.Use(cors.New())
 
-	time.Sleep(5 * time.Second)
 	configuration := conf.GetConfig()
 	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
 	if err != nil {
