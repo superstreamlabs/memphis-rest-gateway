@@ -1,15 +1,22 @@
 package router
 
 import (
+	"http-proxy/middlewares"
+	"http-proxy/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/memphisdev/memphis.go"
-	handler "http-proxy/handlers"
 )
 
 // SetupRoutes setup router api
-func SetupRoutes(app *fiber.App, producer *memphis.Producer) {
+func SetupRoutes(conn *memphis.Conn) *fiber.App {
+	utils.InitializeValidations()
+	app := fiber.New()
+	app.Use(cors.New())
+	app.Use(middlewares.Authenticate)
+	InitilizeAuthRoutes(app)
+	InitializeStationsRoutes(app, conn)
 
-	api := app.Group("/", logger.New())
-	api.Post("/", handler.CreateHandleMessage(producer))
+	return app
 }
