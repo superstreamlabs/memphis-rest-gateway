@@ -5,6 +5,7 @@ def repoUrlPrefix = "memphisos"
 
 node {
   git credentialsId: 'main-github', url: gitURL, branch: gitBranch
+  def versionTag = readFile "./version.conf"
   
   try{
 
@@ -19,6 +20,22 @@ node {
       sh "docker buildx use builder"
 	  sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName} --platform linux/amd64,linux/arm64 ."
     }
+	  
+     stage('checkout to version branch'){
+	    withCredentials([sshUserPrivateKey(keyFileVariable:'check',credentialsId: 'main-github')]) {
+	    sh "git reset --hard origin/latest"
+	    sh "GIT_SSH_COMMAND='ssh -i $check'  git checkout -b ${versionTag}"
+       	    sh "GIT_SSH_COMMAND='ssh -i $check' git push --set-upstream origin ${versionTag}"
+  	  }
+	}
+	      
+	stage('Create new release') {
+          sh 'sudo yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo'
+          sh 'sudo yum install gh -y'
+          withCredentials([string(credentialsId: 'gh_token', variable: 'GH_TOKEN')]) {
+	    sh(script:"""gh release create \${versionTag} --generate-notes""", returnStdout: true)
+          }
+	}
 
     notifySuccessful()
   
