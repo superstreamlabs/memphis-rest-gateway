@@ -63,6 +63,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 func createTokens() (string, string, error) {
 	atClaims := jwt.MapClaims{}
+	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(configuration.JWT_EXPIRES_IN_MINUTES)).Unix()
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(configuration.JWT_SECRET))
 	if err != nil {
