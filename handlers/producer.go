@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -113,17 +112,17 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 			}
 
 			errCount := 0
-			var lastErr error
+			var allErr []string
 			for _, msg := range batchReq {
 				rawRes, err := json.Marshal(msg)
 				if err != nil {
 					errCount++
-					lastErr = err
+					allErr = append(allErr, err.Error())
 					continue
 				}
 				if err := producer.Produce(rawRes, memphis.MsgHeaders(hdrs)); err != nil {
 					errCount++
-					lastErr = err
+					allErr = append(allErr, err.Error())
 				}
 			}
 
@@ -131,7 +130,9 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 				c.Status(400)
 				return c.JSON(&fiber.Map{
 					"success": false,
-					"error":   fmt.Sprintf("send failed for %d/%d messages, last error: %v", errCount, len(batchReq), lastErr.Error()),
+					"sent":    len(batchReq) - errCount,
+					"fail":    errCount,
+					"errors":  allErr,
 				})
 			}
 		default:
