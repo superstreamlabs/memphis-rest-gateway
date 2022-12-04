@@ -102,7 +102,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 
 		switch contentType {
 		case "application/json":
-			var batchReq []map[string]string
+			var batchReq []map[string]any
 			err := json.Unmarshal(bodyReq, &batchReq)
 			if err != nil {
 				return errors.New("unsupported request")
