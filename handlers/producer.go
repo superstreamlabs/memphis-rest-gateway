@@ -67,11 +67,31 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 				return err
 			}
 			if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
-				c.Status(400)
-				return c.JSON(&fiber.Map{
-					"success": false,
-					"error":   err.Error(),
-				})
+				if strings.Contains(err.Error(), "memphis: no responders available for request") {
+					delete(producers, stationName)
+					producer, err = createProducer(conn, producers, stationName)
+					if err != nil {
+						c.Status(400)
+						return c.JSON(&fiber.Map{
+							"success": false,
+							"error":   err.Error(),
+						})
+					}
+					err = producer.Produce(message, memphis.MsgHeaders(hdrs))
+					if err != nil {
+						c.Status(400)
+						return c.JSON(&fiber.Map{
+							"success": false,
+							"error":   err.Error(),
+						})
+					}
+				} else {
+					c.Status(400)
+					return c.JSON(&fiber.Map{
+						"success": false,
+						"error":   err.Error(),
+					})
+				}
 			}
 		default:
 			return errors.New("unsupported content type")
