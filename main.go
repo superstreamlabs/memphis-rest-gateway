@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"http-proxy/conf"
 	"http-proxy/router"
+	"log"
 	"time"
 
 	"github.com/memphisdev/memphis.go"
@@ -31,5 +32,6 @@ func main() {
 
 serverInit:
 	app := router.SetupRoutes(conn)
+	log.Output(1, "Memphis Http Proxy is up and running")
 	app.Listen(":" + configuration.HTTP_PORT)
 }
