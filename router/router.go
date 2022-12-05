@@ -12,7 +12,9 @@ import (
 // SetupRoutes setup router api
 func SetupRoutes(conn *memphis.Conn) *fiber.App {
 	utils.InitializeValidations()
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		DisableStartupMessage: true,
+	})
 	app.Use(cors.New())
 	app.Use(middlewares.Authenticate)
 	InitilizeAuthRoutes(app)
