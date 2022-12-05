@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"http-proxy/conf"
+	"http-proxy/logger"
 	"http-proxy/router"
-	"log"
 	"time"
 
 	"github.com/memphisdev/memphis.go"
@@ -25,13 +25,18 @@ func main() {
 				ticker.Stop()
 				goto serverInit
 			} else {
-				fmt.Printf("Awaiting to establish connection with Memphis - %v", err.Error())
+				fmt.Printf("Awaiting to establish connection with Memphis - %v\n", err.Error())
 			}
 		}
 	}
 
 serverInit:
-	app := router.SetupRoutes(conn)
-	log.Output(1, "Memphis Http Proxy is up and running")
+	l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, configuration.CONNECTION_TOKEN)
+	if err != nil {
+		panic("Logger creation failed - " + err.Error())
+	}
+
+	app := router.SetupRoutes(conn, l)
+	l.Noticef("Memphis Http Proxy is up and running")
 	app.Listen(":" + configuration.HTTP_PORT)
 }

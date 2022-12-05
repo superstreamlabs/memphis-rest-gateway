@@ -1,6 +1,7 @@
 package router
 
 import (
+	"http-proxy/logger"
 	"http-proxy/middlewares"
 	"http-proxy/utils"
 
@@ -10,13 +11,16 @@ import (
 )
 
 // SetupRoutes setup router api
-func SetupRoutes(conn *memphis.Conn) *fiber.App {
+func SetupRoutes(conn *memphis.Conn, l *logger.Logger) *fiber.App {
 	utils.InitializeValidations()
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
+
+	logger.SetLogger(app, l)
 	app.Use(cors.New())
 	app.Use(middlewares.Authenticate)
+
 	InitilizeAuthRoutes(app)
 	InitializeStationsRoutes(app, conn)
 
