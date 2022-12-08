@@ -11,6 +11,20 @@ import (
 )
 
 var configuration = conf.GetConfig()
+var noNeedAuthRoutes = []string{
+	"/auth/authenticate",
+	"/auth/refreshtoken",
+}
+
+func isAuthNeeded(path string) bool {
+	for _, route := range noNeedAuthRoutes {
+		if route == path {
+			return false
+		}
+	}
+
+	return true
+}
 
 func extractToken(authHeader string) (string, error) {
 	if authHeader == "" {
@@ -47,7 +61,7 @@ func verifyToken(tokenString string, secret string) error {
 
 func Authenticate(c *fiber.Ctx) error {
 	path := strings.ToLower(string(c.Context().URI().RequestURI()))
-	if path != "/auth/authenticate" {
+	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
 		tokenString, err := extractToken(headers["Authorization"])
 		if err != nil || tokenString == "" {
@@ -56,6 +70,20 @@ func Authenticate(c *fiber.Ctx) error {
 			})
 		}
 		err = verifyToken(tokenString, configuration.JWT_SECRET)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "Unauthorized",
+			})
+		}
+	} else if path == "/auth/refreshtoken" {
+		tokenString := c.Cookies("jwt-refresh-token")
+		if tokenString == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "Unauthorized",
+			})
+		}
+
+		err := verifyToken(tokenString, configuration.REFRESH_JWT_SECRET)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",

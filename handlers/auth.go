@@ -40,7 +40,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 	conn.Close()
-	token, refreshToken, err := createTokens()
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Create tokens error",
@@ -49,7 +49,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	cookie := new(fiber.Cookie)
 	cookie.Name = "jwt-refresh-token"
 	cookie.Value = refreshToken
-	cookie.MaxAge = configuration.REFRESH_JWT_EXPIRES_IN_MINUTES * 60 * 1000
+	cookie.MaxAge = refreshTokenExpiry * 60 * 1000
 	cookie.Path = "/"
 	cookie.Domain = ""
 	cookie.Secure = false
@@ -57,30 +57,50 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	c.Cookie(cookie)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":        token,
-		"expires_in": configuration.JWT_EXPIRES_IN_MINUTES * 60 * 1000,
+		"expires_in": tokenExpiry * 60 * 1000,
 	})
 }
 
-func createTokens() (string, string, error) {
+func createTokens(tokenExpiryMins, refreshTokenExpiryMins int) (string, string, int, int, error) {
+	if tokenExpiryMins <= 0 {
+		tokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+	}
+
+	if refreshTokenExpiryMins <= 0 {
+		refreshTokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+	}
+
 	atClaims := jwt.MapClaims{}
-	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(configuration.JWT_EXPIRES_IN_MINUTES)).Unix()
+	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(configuration.JWT_SECRET))
 	if err != nil {
-		return "", "", err
+		return "", "", 0, 0, err
 	}
 
-	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(configuration.REFRESH_JWT_EXPIRES_IN_MINUTES)).Unix()
+	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	refreshToken, err := at.SignedString([]byte(configuration.REFRESH_JWT_SECRET))
 	if err != nil {
-		return "", "", err
+		return "", "", 0, 0, err
 	}
-	return token, refreshToken, nil
+	return token, refreshToken, tokenExpiryMins, refreshTokenExpiryMins, nil
 }
 
 func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
-	token, refreshToken, err := createTokens()
+	var body models.RefreshTokenSchema
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+	if err := utils.Validate(body); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"message": err,
+		})
+	}
+
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Create tokens error",
@@ -89,7 +109,7 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	cookie := new(fiber.Cookie)
 	cookie.Name = "jwt-refresh-token"
 	cookie.Value = refreshToken
-	cookie.MaxAge = configuration.REFRESH_JWT_EXPIRES_IN_MINUTES * 60 * 1000
+	cookie.MaxAge = refreshTokenExpiry * 60 * 1000
 	cookie.Path = "/"
 	cookie.Domain = ""
 	cookie.Secure = false
@@ -97,6 +117,6 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	c.Cookie(cookie)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":        token,
-		"expires_in": configuration.JWT_EXPIRES_IN_MINUTES * 60 * 1000,
+		"expires_in": tokenExpiry * 60 * 1000,
 	})
 }
