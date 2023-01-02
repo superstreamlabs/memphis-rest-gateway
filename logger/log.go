@@ -55,8 +55,8 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func CreateLogger(hostname string, token string) (*Logger, error) {
-	nc, err := nats.Connect(hostname+":6666", nats.Name("MEMPHIS HTTP LOGGER"), nats.Token(token))
+func CreateLogger(hostname string, username string, token string) (*Logger, error) {
+	nc, err := nats.Connect(hostname+":6666", nats.Name("MEMPHIS HTTP LOGGER"), nats.Token(username+"::"+token))
 	if err != nil {
 		return nil, err
 	}

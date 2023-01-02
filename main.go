@@ -31,7 +31,7 @@ func main() {
 	}
 
 serverInit:
-	l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, configuration.CONNECTION_TOKEN)
+	l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
 	if err != nil {
 		panic("Logger creation failed - " + err.Error())
 	}
