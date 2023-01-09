@@ -20,7 +20,14 @@ func main() {
 		select {
 		case <-ticker.C:
 			var err error
-			conn, err = memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, configuration.CONNECTION_TOKEN)
+			conn, err = memphis.Connect(
+				configuration.MEMPHIS_HOST,
+				configuration.ROOT_USER,
+				configuration.CONNECTION_TOKEN,
+				memphis.Reconnect(true),
+				memphis.MaxReconnect(10),
+				memphis.ReconnectInterval(3*time.Second),
+			)
 			if err == nil {
 				ticker.Stop()
 				goto serverInit
