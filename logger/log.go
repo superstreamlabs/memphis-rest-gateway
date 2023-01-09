@@ -12,9 +12,9 @@ import (
 const (
 	httpProxySourceName = "http-proxy"
 	syslogsStreamName   = "$memphis_syslogs"
-	syslogsInfoSubject  = "info"
-	syslogsWarnSubject  = "warn"
-	syslogsErrSubject   = "err"
+	syslogsInfoSubject  = "extern.info"
+	syslogsWarnSubject  = "extern.warn"
+	syslogsErrSubject   = "extern.err"
 	labelLen            = 3
 	infoLabel           = "[INF] "
 	debugLabel          = "[DBG] "
