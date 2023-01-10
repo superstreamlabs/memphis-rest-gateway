@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"http-proxy/conf"
+	"http-proxy/logger"
 	"http-proxy/models"
 	"http-proxy/utils"
 	"strings"
@@ -17,8 +18,10 @@ var configuration = conf.GetConfig()
 type AuthHandler struct{}
 
 func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
+	log := logger.GetLogger(c)
 	var body models.AuthSchema
 	if err := c.BodyParser(&body); err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
@@ -31,10 +34,13 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") {
+			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Wrong credentials",
 			})
 		}
+
+		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Server error",
 		})
@@ -42,6 +48,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	conn.Close()
 	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
 	if err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Create tokens error",
 		})
@@ -88,8 +95,10 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int) (string, string, 
 }
 
 func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	log := logger.GetLogger(c)
 	var body models.RefreshTokenSchema
 	if err := c.BodyParser(&body); err != nil {
+		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
@@ -102,6 +111,7 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
 	if err != nil {
+		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Create tokens error",
 		})

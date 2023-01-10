@@ -40,8 +40,6 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 		"ERR": syslogsErrSubject}
 
 	label := string(p[sw.labelStart : sw.labelStart+labelLen])
-	fmt.Println(label)
-	fmt.Println(string(p))
 	subjectSuffix, ok := logLabelToSubjectMap[label]
 	if !ok { // skip other labels
 		return 0, nil

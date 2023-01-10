@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"http-proxy/logger"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -43,11 +44,13 @@ func createProducer(conn *memphis.Conn, producers map[string]*memphis.Producer, 
 
 func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
+		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
 		var producer *memphis.Producer
 
 		producer, err := createProducer(conn, producers, stationName)
 		if err != nil {
+			log.Errorf("CreateHandleMessage - createProducer: %s", err.Error())
 			return err
 		}
 
@@ -64,6 +67,7 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 			message := bodyReq
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
+				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
 				return err
 			}
 			if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
@@ -71,7 +75,8 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 					delete(producers, stationName)
 					producer, err = createProducer(conn, producers, stationName)
 					if err != nil {
-						c.Status(400)
+						log.Errorf("CreateHandleMessage - createProducer retry: %s", err.Error())
+						c.Status(500)
 						return c.JSON(&fiber.Map{
 							"success": false,
 							"error":   err.Error(),
@@ -79,14 +84,16 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 					}
 					err = producer.Produce(message, memphis.MsgHeaders(hdrs))
 					if err != nil {
-						c.Status(400)
+						log.Errorf("CreateHandleMessage - produce retry: %s", err.Error())
+						c.Status(500)
 						return c.JSON(&fiber.Map{
 							"success": false,
 							"error":   err.Error(),
 						})
 					}
 				} else {
-					c.Status(400)
+					log.Errorf("CreateHandleMessage - produce: %s", err.Error())
+					c.Status(500)
 					return c.JSON(&fiber.Map{
 						"success": false,
 						"error":   err.Error(),
@@ -107,11 +114,13 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 
 func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
+		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
 		var producer *memphis.Producer
 
 		producer, err := createProducer(conn, producers, stationName)
 		if err != nil {
+			log.Errorf("CreateHandleBatch - createProducer: %s", err.Error())
 			return err
 		}
 
@@ -124,10 +133,12 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 			var batchReq []map[string]any
 			err := json.Unmarshal(bodyReq, &batchReq)
 			if err != nil {
+				log.Errorf("CreateHandleBatch - body unmarshal: %s", err.Error())
 				return errors.New("unsupported request")
 			}
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
+				log.Errorf("CreateHandleBatch - handleHeaders: %s", err.Error())
 				return err
 			}
 
@@ -145,6 +156,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 						delete(producers, stationName)
 						producer, err = createProducer(conn, producers, stationName)
 						if err != nil {
+							log.Errorf("CreateHandleBatch - createProducer retry: %s", err.Error())
 							errCount++
 							allErr = append(allErr, err.Error())
 							c.Status(400)
@@ -155,6 +167,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 						}
 						err = producer.Produce(rawRes, memphis.MsgHeaders(hdrs))
 						if err != nil {
+							log.Errorf("CreateHandleBatch - produce retry: %s", err.Error())
 							errCount++
 							allErr = append(allErr, err.Error())
 							c.Status(400)
@@ -164,6 +177,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 							})
 						}
 					} else {
+						log.Errorf("CreateHandleBatch - produce: %s", err.Error())
 						errCount++
 						allErr = append(allErr, err.Error())
 						c.Status(400)

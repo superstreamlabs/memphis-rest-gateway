@@ -5,6 +5,7 @@ import (
 )
 
 type Configuration struct {
+	VERSION                        string
 	JWT_SECRET                     string
 	JWT_EXPIRES_IN_MINUTES         int
 	REFRESH_JWT_SECRET             string
