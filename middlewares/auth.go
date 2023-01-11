@@ -13,6 +13,7 @@ import (
 
 var configuration = conf.GetConfig()
 var noNeedAuthRoutes = []string{
+	"/",
 	"/auth/authenticate",
 	"/auth/refreshtoken",
 }
