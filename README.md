@@ -38,109 +38,170 @@ that provides end-to-end support for in-app streaming use cases using Memphis di
 Memphis' platform requires zero ops, enables rapid development, extreme cost reduction, <br>
 eliminates coding barriers, and saves a great amount of dev time for data-oriented developers and data engineers.
 
-## 📸 Screenshots
-Dashboard             |  Station (Topic) overview|  CLI
-:-------------------------:|:-------------------------:|:-------------------------:
-<img width="300" alt="Dashboard" src="https://user-images.githubusercontent.com/70286779/182221769-3aa953cc-df71-4c0e-b0d2-9dd4ab83fea9.png">|<img width="300" alt="Station Overview" src="https://user-images.githubusercontent.com/70286779/182221788-0a159007-ab93-46aa-9c81-222671144a05.png">|<img src="https://user-images.githubusercontent.com/70286779/175806007-9a37e130-3e5a-4606-bdda-a71a89efae7f.png" alt="drawing" width="300"/>
+# REST Gateway (HTTP Proxy)
 
-## ⭐️ Why
-Working with data streaming is HARD.<br>
+## Introduction
 
-As a developer, you need to build a dedicated pipeline for each data source,<br>
-work with schemas, formats, serializations, analyze each source individually,<br>
-enrich the data with other sources, constantly change APIs, and scale for better performance 🥵.<br>
-Besides that, it constantly crashes and requires adaptation to different rate limits.<br>
-**It takes time and resources that you probably don't have.**<br>
+To enable message production via HTTP calls for various use cases and ease of use, Memphis added an HTTP gateway to receive REST-based requests (=messages) and produce those messages to the required station.
 
-Message broker acts as the middleman and supports streaming architecture,<br>
-but then you encounter Apache Kafka and its documentation and run back to the monolith and batch jobs.<br>
-**Give memphis{dev} a spin before.**
+Common use cases that benefit from the REST Gateway are&#x20;
 
-## 👉 Use-cases
-- Async task management
-- Real-time streaming pipelines
-- Data ingestion
-- Cloud Messaging
-  - Services (microservices, service mesh)
-  - Event/Data Streaming (observability, analytics, ML/AI)
-- Queuing
-- N:N communication patterns
+* Produce events directly from a frontend
+* Produce CDC events using the Debezium HTTP server
+* ArgoCD webhooks
+* Receive data from Fivetran/Rivery/Any ETL platform using HTTP calls
 
-## ✨ Features
+## Architecture
 
-[**Roadmap**](https://github.com/orgs/memphisdev/projects/2/views/1)
+1. An endpoint creates an HTTP request toward the HTTP Proxy using **port 4444**
+2. The HTTP Proxy receives the incoming request and produces it as a message to the station
 
-**[v0.4.1](https://docs.memphis.dev/memphis/release-notes/releases/v0.4.1-beta)**
+![http proxy](https://user-images.githubusercontent.com/70286779/212469259-9f092921-63fa-4121-83cf-90f745d4b952.jpeg)
 
-- 🚀 Fully optimized message broker in under 3 minutes
-- 💻 Easy-to-use UI, CLI, and SDKs
-- 📺 Data-level observability
-- ☠️ Dead-Letter Queue with automatic message retransmit
-- 🔤 Schemaverse - Embedded schema management for produced data (Protobuf/JSON/GraphQL/Avro)
-- ⛓  SDKs: Node.JS, Go, Python, Typescript, NestJS
-- 🐳☸ Runs on your Docker or Kubernetes
-- 👨‍💻 Community driven
 
-## 🚀 Getting Started
-[Sandbox](https://sandbox.memphis.dev)<br>
-[Installation videos](https://www.youtube.com/playlist?list=PL_7iYjqhtXpWpZT2U0zDYo2eGOoGmg2mm)<br><br>
-Helm for Kubernetes☸
-```shell
-helm repo add memphis https://k8s.memphis.dev/charts/ --force-update && \
-helm install my-memphis memphis/memphis --create-namespace --namespace memphis
+For scale requirements, the "HTTP Proxy" component is separate from the brokers' pod and can scale out individually.
+
+## Security Mechanisms
+
+### JWT
+
+Memphis REST (HTTP) gateway makes use of JWT-type identification.\
+[JSON Web Tokens](https://jwt.io/) are an open, industry-standard RFC 7519 method for representing claims securely between two parties.
+
+### API Token
+
+Soon.
+
+## Sequence diagram
+
+![Sequence diagram](https://user-images.githubusercontent.com/70286779/212469294-ebf2da3f-af30-46bc-bb42-ef860159356e.jpeg)
+
+
+## Usage
+
+Tip: Please make sure your 'http proxy' component is exposed either through localhost or public IP<br>
+Tip: The HTTP Proxy URL for the **sandbox** environment is:<br>
+https://proxy.sandbox.memphis.dev
+
+### Authenticate
+
+First, you have to authenticate to get a JWT token.\
+The JWT token is valid by default for 15 minutes.
+
+#### Example:
+
 ```
-Docker🐳 Compose
-```shell
-curl -s https://memphisdev.github.io/memphis-docker/docker-compose.yml -o docker-compose.yml && \
-docker compose -f docker-compose.yml -p memphis up
-```
-
-<p align="center">
-<a href="https://youtu.be/-5YmxYRQsdw"><img align="center" alt="connect your first app" src="https://img.youtube.com/vi/-5YmxYRQsdw/0.jpg"></a>
-</p>
-
-<p align="center">
-<a href="https://medium.com/memphis-dev/how-to-build-your-own-wolt-app-b220d738bb71"> Build an event-driven food delivery app </a>
-
-</p>
-
-## High-Level Architecture
-
-<p align="center">
-<img alt="memphis.dev-logo" height="500" alt="memphis.dev Architecture" src="https://user-images.githubusercontent.com/70286779/201409779-f23aa9b7-8175-4165-9720-d0a217b49878.jpeg">
-
-
-</p>
-
-## Local access
-### Via Kubernetes
-To access Memphis UI from localhost, run the below commands:
-```shell
-kubectl port-forward service/memphis-ui 9000:80 --namespace memphis > /dev/null &
+curl --location --request POST 'http_proxy:4444/auth/authenticate' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "username": "root",
+    "connection_token": "memphis",
+    "token_expiry_in_minutes": 60,
+    "refresh_token_expiry_in_minutes": 10000092
+}'
 ```
 
-To access Memphis using CLI or SDK from localhost, run the below commands:</br>
-```shell
-kubectl port-forward service/memphis-cluster 6666:6666 5555:5555 --namespace memphis > /dev/null &
+Expected output:&#x20;
+
 ```
-Dashboard: http://localhost:9000</br>
-Memphis broker: http://localhost:6666
+{"expires_in":900000,"jwt":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI"}
+```
 
-**For Production Environments**
-Please expose the UI, Cluster, and Control-plane via k8s ingress / load balancer / nodeport
+The return **`jwt`** key is both the **token** and **also the refresh token** for simplicity
 
-### Via Docker
-UI - http://localhost:9000<br>
-Broker - http://localhost:6666<br>
+#### Parameters
 
-## Beta
-Memphis{dev} is currently in Beta version. This means that we are still working on essential features like real-time messages tracing, schema registry and inline processing as well as making more SDKs and supporting materials.
+`username`: Memphis application-type username\
+`connection_token`: Memphis application-type connection token\
+`token_expiry_in_minutes`: Initial token expiration time.\
+`refresh_token_expiry_in_minutes`: When should
 
-How does it affect you? Well... mostly it doesn't.<br>
-(a) The core of memphis broker is highly stable<br>
-(b) We learn and fix fast<br><br>
-But we need your love, and any help we can get by stars, PR, feedback, issues, and enhancements.<br>
-Read more on [Memphis{dev} Documentation 📃](https://memphis.dev/docs).
+### Refresh Token
+
+Before the JWT token expires, you must call the refresh token to get a new one, or after authentication failure.\
+The refresh JWT token is the same initial JWT token, and it is valid by default for 5 hours.
+
+#### Example:
+
+```
+curl --location --request POST 'http_proxy:4444/auth/refreshToken' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.RY_LcQ8Halm3Kdk_JxigCN8LDeggKlWwWHiItBK8tVw' \
+--data-raw ''
+```
+
+Expected output:
+
+```
+{"expires_in":900000,"jwt":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI"}
+```
+
+### Produce a single message
+
+{% hint style="info" %}
+Attach the JWT token to every request.\
+JWT token as '`Bearer`' as a header.
+{% endhint %}
+
+#### Supported content types:
+
+* text
+* application/json
+* application/x-protobuf
+
+#### Example:
+
+```
+curl --location --request POST 'http_proxy:4444/stations/<station_name>/produce/single' \
+--header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '{"message": "New Message"}'
+```
+
+Expected output:
+
+```
+{"error":null,"success":true}
+```
+
+#### Error Example:
+
+```
+{"error":"Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1', 'field2', 'field3'","success":false}
+```
+
+### Produce a batch of messages&#x20;
+
+Attach the JWT token to every request.\
+JWT token as '`Bearer`' as a header.
+
+#### Supported content types:
+
+* application/json
+
+#### Example:
+
+```
+curl --location --request POST 'http_proxy:4444/stations/<station_name>/produce/batch' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '[
+    {"message": "x"},
+    {"message": "y"},
+    {"message": "z"}
+]'
+```
+
+Expected output:
+
+```
+{"error":null,"success":true}
+```
+
+#### Error Examples:
+
+```
+{"errors":["Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1'","Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1'"],"fail":2,"sent":1,"success":false}
+```
 
 ## Support 🙋‍♂️🤝
 
