@@ -137,10 +137,8 @@ Expected output:
 
 ### Produce a single message
 
-{% hint style="info" %}
 Attach the JWT token to every request.\
 JWT token as '`Bearer`' as a header.
-{% endhint %}
 
 #### Supported content types:
 
