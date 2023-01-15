@@ -77,7 +77,7 @@ Soon.
 ![Sequence diagram](https://user-images.githubusercontent.com/70286779/212469294-ebf2da3f-af30-46bc-bb42-ef860159356e.jpeg)
 
 
-## Usage
+## Getting started
 
 Tip: Please make sure your 'http proxy' component is exposed either through localhost or public IP<br>
 Tip: The HTTP Proxy URL for the **sandbox** environment is:<br>
