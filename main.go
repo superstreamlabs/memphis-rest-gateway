@@ -10,8 +10,6 @@ import (
 	"github.com/memphisdev/memphis.go"
 )
 
-var configuration = conf.GetConfig()
-
 func main() {
 	configuration := conf.GetConfig()
 	var conn *memphis.Conn

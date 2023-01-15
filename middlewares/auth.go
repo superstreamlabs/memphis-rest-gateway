@@ -16,6 +16,8 @@ var noNeedAuthRoutes = []string{
 	"/",
 	"/auth/authenticate",
 	"/auth/refreshtoken",
+	configuration.MEMPHIS_HOST,
+	"/dev/getsysteminfo",
 }
 
 func isAuthNeeded(path string) bool {
