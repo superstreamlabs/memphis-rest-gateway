@@ -33,7 +33,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		if stringCpu != "0.0" {
 			cpuUsage, err = strconv.ParseFloat(stringCpu, 64)
 			if err != nil {
-				log.Errorf("GetInfo: ParseFloat1: %s", err.Error())
+				log.Errorf("GetInfo: cpuUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"message": err.Error(),
 				})
@@ -52,7 +52,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		if stringMem != "0.0" {
 			memoryUsage, err = strconv.ParseFloat(stringMem, 64)
 			if err != nil {
-				log.Errorf("GetInfo: ParseFloat2: %s", err.Error())
+				log.Errorf("GetInfo: memoryUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"message": err.Error(),
 				})
