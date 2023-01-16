@@ -1,7 +1,6 @@
 package router
 
 import (
-	"http-proxy/conf"
 	"http-proxy/logger"
 	"http-proxy/middlewares"
 	"http-proxy/utils"
@@ -24,10 +23,7 @@ func SetupRoutes(conn *memphis.Conn, l *logger.Logger) *fiber.App {
 
 	InitilizeAuthRoutes(app)
 	InitializeStationsRoutes(app, conn)
-	configuration := conf.GetConfig()
-	if configuration.DEV_ENV == "true" {
-		InitilizeDevInfoRoutes(app)
-	}
+	InitilizeMonitoringRoutes(app)
 
 	return app
 }

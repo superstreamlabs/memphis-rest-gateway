@@ -7,8 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-func InitilizeDevInfoRoutes(app *fiber.App) {
+func InitilizeMonitoringRoutes(app *fiber.App) {
 	devInfoHandler := handlers.DevInfoHandler{}
-	api := app.Group("/dev", logger.New())
-	api.Get("/getSystemInfo", devInfoHandler.GetSystemInfo)
+	api := app.Group("/monitoring", logger.New())
+	api.Get("/getResourcesUtilization", devInfoHandler.GetResourcesUtilization)
 }

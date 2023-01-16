@@ -13,7 +13,7 @@ import (
 
 type DevInfoHandler struct{}
 
-func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
+func (ih DevInfoHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	memoryUsage := float64(0)
 	cpuUsage := float64(0)
@@ -22,7 +22,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		strPid := strconv.Itoa(pid)
 		out, err := exec.Command("ps", "-p", strPid, "-o", "%cpu").Output()
 		if err != nil {
-			log.Errorf("GetInfo: exec command: %s", err.Error())
+			log.Errorf("GetResourcesUtilization: exec command: %s", err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": err.Error(),
 			})
@@ -33,7 +33,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		if stringCpu != "0.0" {
 			cpuUsage, err = strconv.ParseFloat(stringCpu, 64)
 			if err != nil {
-				log.Errorf("GetInfo: cpuUsage: %s", err.Error())
+				log.Errorf("GetResourcesUtilization: cpuUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"message": err.Error(),
 				})
@@ -41,7 +41,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		}
 		out2, err := exec.Command("ps", "-p", strPid, "-o", "%mem").Output()
 		if err != nil {
-			log.Errorf("GetInfo: exec command: %s", err.Error())
+			log.Errorf("GetResourcesUtilization: exec command: %s", err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": err.Error(),
 			})
@@ -52,7 +52,7 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		if stringMem != "0.0" {
 			memoryUsage, err = strconv.ParseFloat(stringMem, 64)
 			if err != nil {
-				log.Errorf("GetInfo: memoryUsage: %s", err.Error())
+				log.Errorf("GetResourcesUtilization: memoryUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"message": err.Error(),
 				})
@@ -60,7 +60,8 @@ func (ih DevInfoHandler) GetSystemInfo(c *fiber.Ctx) error {
 		}
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"cpu":    cpuUsage,
-		"memory": memoryUsage,
+		"cpu":     cpuUsage,
+		"memory":  memoryUsage,
+		"storage": 0,
 	})
 }
