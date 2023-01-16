@@ -23,6 +23,7 @@ func SetupRoutes(conn *memphis.Conn, l *logger.Logger) *fiber.App {
 
 	InitilizeAuthRoutes(app)
 	InitializeStationsRoutes(app, conn)
+	InitilizeMonitoringRoutes(app)
 
 	return app
 }

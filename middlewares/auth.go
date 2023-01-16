@@ -16,6 +16,7 @@ var noNeedAuthRoutes = []string{
 	"/",
 	"/auth/authenticate",
 	"/auth/refreshtoken",
+	"/monitoring/getresourcesutilization",
 }
 
 func isAuthNeeded(path string) bool {
