@@ -11,9 +11,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type DevInfoHandler struct{}
+type MonitoringHandler struct{}
 
-func (ih DevInfoHandler) GetResourcesUtilization(c *fiber.Ctx) error {
+func (ih MonitoringHandler) Status(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "ok",
+	})
+}
+
+func (ih MonitoringHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	memoryUsage := float64(0)
 	cpuUsage := float64(0)

@@ -14,6 +14,7 @@ import (
 var configuration = conf.GetConfig()
 var noNeedAuthRoutes = []string{
 	"/",
+	"/monitoring/status",
 	"/auth/authenticate",
 	"/auth/refreshtoken",
 	"/monitoring/getresourcesutilization",

@@ -8,7 +8,8 @@ import (
 )
 
 func InitilizeMonitoringRoutes(app *fiber.App) {
-	devInfoHandler := handlers.DevInfoHandler{}
+	monitoringHandlerHandler := handlers.MonitoringHandler{}
 	api := app.Group("/monitoring", logger.New())
-	api.Get("/getResourcesUtilization", devInfoHandler.GetResourcesUtilization)
+	api.Get("/status", monitoringHandlerHandler.Status)
+	api.Get("/getResourcesUtilization", monitoringHandlerHandler.GetResourcesUtilization)
 }
