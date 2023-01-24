@@ -18,9 +18,9 @@ node {
  
     stage('Build and push image to Docker Hub') {
       sh "docker buildx use builder"
-	  sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName} --platform linux/amd64,linux/arm64 ."
+      sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --platform linux/amd64,linux/arm64 ."
     }
-	  
+/*	  
      stage('checkout to version branch'){
 	    withCredentials([sshUserPrivateKey(keyFileVariable:'check',credentialsId: 'main-github')]) {
 	    sh "git reset --hard origin/latest"
@@ -35,7 +35,7 @@ node {
           withCredentials([string(credentialsId: 'gh_token', variable: 'GH_TOKEN')]) {
 	    sh "gh release create ${versionTag} --generate-notes"
           }
-	}
+	}*/
 
     notifySuccessful()
   
