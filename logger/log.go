@@ -1,9 +1,14 @@
 package logger
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"http-proxy/conf"
+	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nats-io/nats.go"
@@ -54,7 +59,42 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 }
 
 func CreateLogger(hostname string, username string, token string) (*Logger, error) {
-	nc, err := nats.Connect(hostname+":6666", nats.Name("MEMPHIS HTTP LOGGER"), nats.Token(username+"::"+token))
+	configuration := conf.GetConfig()
+	var nc *nats.Conn
+	var err error
+
+	natsOpts := nats.Options{
+		Url:            hostname + ":6666",
+		AllowReconnect: true,
+		MaxReconnect:   10,
+		ReconnectWait:  3 * time.Second,
+		Token:          username + "::" + token,
+		Name:           "MEMPHIS HTTP LOGGER",
+	}
+
+	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+		cert, err := tls.LoadX509KeyPair(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH)
+		if err != nil {
+			return nil, err
+		}
+		cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			return nil, err
+		}
+		TLSConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+		TLSConfig.Certificates = []tls.Certificate{cert}
+		certs := x509.NewCertPool()
+
+		pemData, err := ioutil.ReadFile(configuration.ROOT_CA_PATH)
+		if err != nil {
+			return nil, err
+		}
+		certs.AppendCertsFromPEM(pemData)
+		TLSConfig.RootCAs = certs
+		natsOpts.TLSConfig = TLSConfig
+	}
+
+	nc, err = natsOpts.Connect()
 	if err != nil {
 		return nil, err
 	}

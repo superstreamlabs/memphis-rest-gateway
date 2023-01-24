@@ -14,7 +14,10 @@
                 "CONNECTION_TOKEN": "memphis",
                 "ROOT_USER": "root",
                 "MEMPHIS_HOST":"localhost",
-                "HTTP_PORT": "4444"
+                "HTTP_PORT": "4444",
+                "CLIENT_CERT_PATH": "",
+                "CLIENT_KEY_PATH": "",
+                "ROOT_CA_PATH": "",
             }
         }
     ]
