@@ -18,14 +18,26 @@ func main() {
 		select {
 		case <-ticker.C:
 			var err error
-			conn, err = memphis.Connect(
-				configuration.MEMPHIS_HOST,
-				configuration.ROOT_USER,
-				configuration.CONNECTION_TOKEN,
-				memphis.Reconnect(true),
-				memphis.MaxReconnect(10),
-				memphis.ReconnectInterval(3*time.Second),
-			)
+			if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+				conn, err = memphis.Connect(
+					configuration.MEMPHIS_HOST,
+					configuration.ROOT_USER,
+					configuration.CONNECTION_TOKEN,
+					memphis.Reconnect(true),
+					memphis.MaxReconnect(10),
+					memphis.ReconnectInterval(3*time.Second),
+					memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH),
+				)
+			} else {
+				conn, err = memphis.Connect(
+					configuration.MEMPHIS_HOST,
+					configuration.ROOT_USER,
+					configuration.CONNECTION_TOKEN,
+					memphis.Reconnect(true),
+					memphis.MaxReconnect(10),
+					memphis.ReconnectInterval(3*time.Second),
+				)
+			}
 			if err == nil {
 				ticker.Stop()
 				goto serverInit

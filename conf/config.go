@@ -15,6 +15,9 @@ type Configuration struct {
 	CONNECTION_TOKEN               string
 	MEMPHIS_HOST                   string
 	DEV_ENV                        string
+	CLIENT_CERT_PATH               string
+	CLIENT_KEY_PATH                string
+	ROOT_CA_PATH                   string
 }
 
 func GetConfig() Configuration {
