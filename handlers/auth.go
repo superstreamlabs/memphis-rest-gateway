@@ -31,7 +31,20 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": err,
 		})
 	}
-	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
+
+	var conn *memphis.Conn
+	var err error
+	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+		conn, err = memphis.Connect(
+			configuration.MEMPHIS_HOST,
+			body.Username,
+			body.ConnectionToken,
+			memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH),
+		)
+	} else {
+		conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
+	}
+
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") {
 			log.Warnf("Authentication error")

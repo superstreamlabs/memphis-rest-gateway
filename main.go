@@ -18,6 +18,9 @@ func main() {
 		select {
 		case <-ticker.C:
 			var err error
+			fmt.Println("test test test")
+			fmt.Println(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH)
+			fmt.Println("test test test")
 			if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
 				conn, err = memphis.Connect(
 					configuration.MEMPHIS_HOST,
