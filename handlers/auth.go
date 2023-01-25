@@ -31,7 +31,20 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": err,
 		})
 	}
-	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
+
+	var conn *memphis.Conn
+	var err error
+	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+		conn, err = memphis.Connect(
+			configuration.MEMPHIS_HOST,
+			body.Username,
+			body.ConnectionToken,
+			memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH),
+		)
+	} else {
+		conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
+	}
+
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") {
 			log.Warnf("Authentication error")
@@ -53,18 +66,12 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": "Create tokens error",
 		})
 	}
-	cookie := new(fiber.Cookie)
-	cookie.Name = "jwt-refresh-token"
-	cookie.Value = refreshToken
-	cookie.MaxAge = refreshTokenExpiry * 60 * 1000
-	cookie.Path = "/"
-	cookie.Domain = ""
-	cookie.Secure = false
-	cookie.HTTPOnly = true
-	c.Cookie(cookie)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"jwt":        token,
-		"expires_in": tokenExpiry * 60 * 1000,
+		"jwt":                      token,
+		"expires_in":               tokenExpiry * 60 * 1000,
+		"jwt_refresh_token":        refreshToken,
+		"refresh_token_expires_in": refreshTokenExpiry * 60 * 1000,
 	})
 }
 
@@ -116,17 +123,11 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 			"message": "Create tokens error",
 		})
 	}
-	cookie := new(fiber.Cookie)
-	cookie.Name = "jwt-refresh-token"
-	cookie.Value = refreshToken
-	cookie.MaxAge = refreshTokenExpiry * 60 * 1000
-	cookie.Path = "/"
-	cookie.Domain = ""
-	cookie.Secure = false
-	cookie.HTTPOnly = true
-	c.Cookie(cookie)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"jwt":        token,
-		"expires_in": tokenExpiry * 60 * 1000,
+		"jwt":                      token,
+		"expires_in":               tokenExpiry * 60 * 1000,
+		"jwt_refresh_token":        refreshToken,
+		"refresh_token_expires_in": refreshTokenExpiry * 60 * 1000,
 	})
 }
