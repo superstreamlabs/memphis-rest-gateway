@@ -58,8 +58,11 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
 		caseText := strings.Contains(contentType, "text")
+		caseJson := strings.Contains(contentType, "application/json")
 		if caseText {
 			contentType = "text/"
+		} else if caseJson {
+			contentType = "application/json"
 		}
 
 		switch contentType {

@@ -8,6 +8,7 @@ type AuthSchema struct {
 }
 
 type RefreshTokenSchema struct {
-	TokenExpiryMins        int `json:"token_expiry_in_minutes"`
-	RefreshTokenExpiryMins int `json:"refresh_token_expiry_in_minutes"`
+	JwtRefreshToken        string `json:"jwt_refresh_token"`
+	TokenExpiryMins        int    `json:"token_expiry_in_minutes"`
+	RefreshTokenExpiryMins int    `json:"refresh_token_expiry_in_minutes"`
 }

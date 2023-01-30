@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"http-proxy/conf"
 	"http-proxy/logger"
+	"http-proxy/models"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -14,8 +15,10 @@ import (
 var configuration = conf.GetConfig()
 var noNeedAuthRoutes = []string{
 	"/",
+	"/monitoring/status",
 	"/auth/authenticate",
 	"/auth/refreshtoken",
+	"/monitoring/getresourcesutilization",
 }
 
 func isAuthNeeded(path string) bool {
@@ -81,15 +84,22 @@ func Authenticate(c *fiber.Ctx) error {
 			})
 		}
 	} else if path == "/auth/refreshtoken" {
-		tokenString := c.Cookies("jwt-refresh-token")
-		if tokenString == "" {
+		var body models.RefreshTokenSchema
+		if err := c.BodyParser(&body); err != nil {
+			log.Errorf("Authenticate: %s", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": err.Error(),
+			})
+		}
+
+		if body.JwtRefreshToken == "" {
 			log.Warnf("Authentication error - refresh token is missing")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",
 			})
 		}
 
-		err := verifyToken(tokenString, configuration.REFRESH_JWT_SECRET)
+		err := verifyToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - refresh token validation has failed")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
