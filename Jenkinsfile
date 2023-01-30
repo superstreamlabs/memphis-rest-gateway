@@ -20,7 +20,8 @@ node {
       sh "docker buildx use builder"
       sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --platform linux/amd64,linux/arm64 ."
     }
-/*	  
+	
+     if (env.BRANCH_NAME ==~ /(latest)/) {
      stage('checkout to version branch'){
 	    withCredentials([sshUserPrivateKey(keyFileVariable:'check',credentialsId: 'main-github')]) {
 	    sh "git reset --hard origin/latest"
@@ -35,7 +36,8 @@ node {
           withCredentials([string(credentialsId: 'gh_token', variable: 'GH_TOKEN')]) {
 	    sh "gh release create ${versionTag} --generate-notes"
           }
-	}*/
+	}
+     }
 
     notifySuccessful()
   
