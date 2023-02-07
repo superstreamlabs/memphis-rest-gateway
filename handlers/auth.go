@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"http-proxy/conf"
-	"http-proxy/logger"
-	"http-proxy/models"
-	"http-proxy/utils"
+	"rest-gateway/conf"
+	"rest-gateway/logger"
+	"rest-gateway/models"
+	"rest-gateway/utils"
 	"strings"
 	"time"
 

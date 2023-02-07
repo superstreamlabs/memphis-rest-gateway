@@ -1,4 +1,4 @@
-module http-proxy
+module rest-gateway
 
 go 1.18
 

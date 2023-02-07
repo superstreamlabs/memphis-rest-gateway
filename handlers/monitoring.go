@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"http-proxy/logger"
+	"rest-gateway/logger"
 	"os"
 	"os/exec"
 	"runtime"

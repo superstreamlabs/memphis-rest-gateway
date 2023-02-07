@@ -3,9 +3,9 @@ package middlewares
 import (
 	"errors"
 	"fmt"
-	"http-proxy/conf"
-	"http-proxy/logger"
-	"http-proxy/models"
+	"rest-gateway/conf"
+	"rest-gateway/logger"
+	"rest-gateway/models"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"

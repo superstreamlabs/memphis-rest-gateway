@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"http-proxy/logger"
+	"rest-gateway/logger"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +26,7 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 }
 
 func createProducer(conn *memphis.Conn, producers map[string]*memphis.Producer, stationName string) (*memphis.Producer, error) {
-	producerName := "http_proxy"
+	producerName := "rest_gateway"
 	var producer *memphis.Producer
 	var err error
 	if _, ok := producers[stationName]; !ok {

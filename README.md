@@ -53,13 +53,13 @@ Common use cases that benefit from the REST Gateway are&#x20;
 
 ## Architecture
 
-1. An endpoint creates an HTTP request toward the HTTP Proxy using **port 4444**
-2. The HTTP Proxy receives the incoming request and produces it as a message to the station
+1. An endpoint creates an HTTP request toward the REST Gateway using **port 4444**
+2. The REST gateway receives the incoming request and produces it as a message to the station
 
-![http proxy](https://user-images.githubusercontent.com/70286779/212469259-9f092921-63fa-4121-83cf-90f745d4b952.jpeg)
+![REST gateway](https://user-images.githubusercontent.com/70286779/212469259-9f092921-63fa-4121-83cf-90f745d4b952.jpeg)
 
 
-For scale requirements, the "HTTP Proxy" component is separate from the brokers' pod and can scale out individually.
+For scale requirements, the "REST gateway" component is separate from the brokers' pod and can scale out individually.
 
 ## Security Mechanisms
 
@@ -79,9 +79,9 @@ Soon.
 
 ## Getting started
 
-Tip: Please make sure your 'http proxy' component is exposed either through localhost or public IP<br>
-Tip: The HTTP Proxy URL for the **sandbox** environment is:<br>
-https://proxy.sandbox.memphis.dev
+Tip: Please make sure your 'REST gateway' component is exposed either through localhost or public IP<br>
+Tip: The REST gateway URL for the **sandbox** environment is:<br>
+https://restgw.sandbox.memphis.dev
 
 ### Authenticate
 
@@ -91,7 +91,7 @@ The JWT token is valid by default for 15 minutes.
 #### Example:
 
 ```
-curl --location --request POST 'http_proxy:4444/auth/authenticate' \
+curl --location --request POST 'rest_gateway:4444/auth/authenticate' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "username": "root",
@@ -122,7 +122,7 @@ The refresh JWT is valid by default for 5 hours.
 #### Example:
 
 ```
-curl --location --request POST 'http_proxy:4444/auth/refreshToken' \
+curl --location --request POST 'rest_gateway:4444/auth/refreshToken' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "jwt_refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNzQ3MjA2NjB9.Furfr5EZlBlglVPSjtU4x02z_jbWhu5pIByhCRh6FU8",
@@ -151,7 +151,7 @@ JWT token as '`Bearer`' as a header.
 #### Example:
 
 ```
-curl --location --request POST 'http_proxy:4444/stations/<station_name>/produce/single' \
+curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/single' \
 --header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '{"message": "New Message"}'
@@ -166,7 +166,7 @@ Expected output:
 #### Error Example:
 
 ```
-{"error":"Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1', 'field2', 'field3'","success":false}
+{"error":"Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1', 'field2', 'field3'","success":false}
 ```
 
 ### Produce a batch of messages&#x20;
@@ -181,7 +181,7 @@ JWT token as '`Bearer`' as a header.
 #### Example:
 
 ```
-curl --location --request POST 'http_proxy:4444/stations/<station_name>/produce/batch' \
+curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/batch' \
 --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '[
@@ -200,7 +200,7 @@ Expected output:
 #### Error Examples:
 
 ```
-{"errors":["Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1'","Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-http-proxy/123#/required: missing properties: 'field1'"],"fail":2,"sent":1,"success":false}
+{"errors":["Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'","Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'"],"fail":2,"sent":1,"success":false}
 ```
 
 ## Support 🙋‍♂️🤝

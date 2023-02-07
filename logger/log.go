@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"http-proxy/conf"
+	"rest-gateway/conf"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	httpProxySourceName = "http-proxy"
+	restGwSourceName = "rest-gateway"
 	syslogsStreamName   = "$memphis_syslogs"
 	syslogsInfoSubject  = "extern.info"
 	syslogsWarnSubject  = "extern.warn"
@@ -50,7 +50,7 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 		return 0, nil
 	}
 
-	subject := fmt.Sprintf("%s.%s.%s", syslogsStreamName, httpProxySourceName, subjectSuffix)
+	subject := fmt.Sprintf("%s.%s.%s", syslogsStreamName, restGwSourceName, subjectSuffix)
 	err := sw.nc.Publish(subject, p)
 	if err != nil {
 		return 0, err

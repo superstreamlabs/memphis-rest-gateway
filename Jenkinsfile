@@ -1,6 +1,6 @@
 def gitBranch = env.BRANCH_NAME
-def imageName = "memphis-http-proxy"
-def gitURL = "git@github.com:Memphisdev/memphis-http-proxy.git"
+def imageName = "memphis-rest-gateway"
+def gitURL = "git@github.com:Memphisdev/memphis-rest-gateway.git"
 def repoUrlPrefix = "memphisos"
 
 node {

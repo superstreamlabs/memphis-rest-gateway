@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"http-proxy/conf"
-	"http-proxy/logger"
-	"http-proxy/router"
+	"rest-gateway/conf"
+	"rest-gateway/logger"
+	"rest-gateway/router"
 	"time"
 
 	"github.com/memphisdev/memphis.go"

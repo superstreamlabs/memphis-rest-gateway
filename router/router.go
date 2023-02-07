@@ -1,9 +1,9 @@
 package router
 
 import (
-	"http-proxy/logger"
-	"http-proxy/middlewares"
-	"http-proxy/utils"
+	"rest-gateway/logger"
+	"rest-gateway/middlewares"
+	"rest-gateway/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

@@ -1,7 +1,7 @@
 package router
 
 import (
-	"http-proxy/handlers"
+	"rest-gateway/handlers"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
