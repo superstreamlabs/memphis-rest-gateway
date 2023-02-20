@@ -6,7 +6,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.40.1
-	github.com/memphisdev/memphis.go v0.2.0
+	github.com/memphisdev/memphis.go v0.2.1
 	github.com/nats-io/nats.go v1.19.0
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
