@@ -157,6 +157,14 @@ curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produc
 --data-raw '{"message": "New Message"}'
 ```
 
+#### If you don't have the option to add the authorization header, you can send the JWT via query parameters:
+
+```
+curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/single?authorization=eyJhbGciOiJIU**********.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '{"message": "New Message"}'
+```
+
 Expected output:
 
 ```
