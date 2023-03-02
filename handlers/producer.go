@@ -107,7 +107,6 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 						"success": false,
 						"error":   allErr,
 					})
-					// }
 				}
 			}
 
