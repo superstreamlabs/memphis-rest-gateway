@@ -10,8 +10,6 @@ import (
 	"github.com/memphisdev/memphis.go"
 )
 
-var producers = make(map[string]*memphis.Producer)
-
 func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	hdrs := memphis.Headers{}
 	hdrs.New()
@@ -25,35 +23,10 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	return hdrs, nil
 }
 
-func createProducer(conn *memphis.Conn, producers map[string]*memphis.Producer, stationName string) (*memphis.Producer, error) {
-	producerName := "rest_gateway"
-	var producer *memphis.Producer
-	var err error
-	if _, ok := producers[stationName]; !ok {
-		producer, err = conn.CreateProducer(stationName, producerName, memphis.ProducerGenUniqueSuffix())
-		if err != nil {
-			return nil, err
-		}
-		producers[stationName] = producer
-	} else {
-		producer = producers[stationName]
-	}
-
-	return producer, nil
-}
-
 func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
-		var producer *memphis.Producer
-
-		producer, err := createProducer(conn, producers, stationName)
-		if err != nil {
-			log.Errorf("CreateHandleMessage - createProducer: %s", err.Error())
-			return err
-		}
-
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
@@ -73,35 +46,14 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
 				return err
 			}
-			if err := producer.Produce(message, memphis.MsgHeaders(hdrs)); err != nil {
-				if strings.Contains(err.Error(), "memphis: no responders available for request") {
-					delete(producers, stationName)
-					producer, err = createProducer(conn, producers, stationName)
-					if err != nil {
-						log.Errorf("CreateHandleMessage - createProducer retry: %s", err.Error())
-						c.Status(500)
-						return c.JSON(&fiber.Map{
-							"success": false,
-							"error":   err.Error(),
-						})
-					}
-					err = producer.Produce(message, memphis.MsgHeaders(hdrs))
-					if err != nil {
-						log.Errorf("CreateHandleMessage - produce retry: %s", err.Error())
-						c.Status(500)
-						return c.JSON(&fiber.Map{
-							"success": false,
-							"error":   err.Error(),
-						})
-					}
-				} else {
-					log.Errorf("CreateHandleMessage - produce: %s", err.Error())
-					c.Status(500)
-					return c.JSON(&fiber.Map{
-						"success": false,
-						"error":   err.Error(),
-					})
-				}
+			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
+			if err != nil {
+				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
+				c.Status(500)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   err.Error(),
+				})
 			}
 		default:
 			return errors.New("unsupported content type")
@@ -119,14 +71,6 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
-		var producer *memphis.Producer
-
-		producer, err := createProducer(conn, producers, stationName)
-		if err != nil {
-			log.Errorf("CreateHandleBatch - createProducer: %s", err.Error())
-			return err
-		}
-
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
@@ -154,41 +98,16 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 					allErr = append(allErr, err.Error())
 					continue
 				}
-				if err := producer.Produce(rawRes, memphis.MsgHeaders(hdrs)); err != nil {
-					if strings.Contains(err.Error(), "memphis: no responders available for request") {
-						delete(producers, stationName)
-						producer, err = createProducer(conn, producers, stationName)
-						if err != nil {
-							log.Errorf("CreateHandleBatch - createProducer retry: %s", err.Error())
-							errCount++
-							allErr = append(allErr, err.Error())
-							c.Status(400)
-							return c.JSON(&fiber.Map{
-								"success": false,
-								"error":   allErr,
-							})
-						}
-						err = producer.Produce(rawRes, memphis.MsgHeaders(hdrs))
-						if err != nil {
-							log.Errorf("CreateHandleBatch - produce retry: %s", err.Error())
-							errCount++
-							allErr = append(allErr, err.Error())
-							c.Status(400)
-							return c.JSON(&fiber.Map{
-								"success": false,
-								"error":   allErr,
-							})
-						}
-					} else {
-						log.Errorf("CreateHandleBatch - produce: %s", err.Error())
-						errCount++
-						allErr = append(allErr, err.Error())
-						c.Status(400)
-						return c.JSON(&fiber.Map{
-							"success": false,
-							"error":   allErr,
-						})
-					}
+				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
+					log.Errorf("CreateHandleBatch - produce: %s", err.Error())
+					errCount++
+					allErr = append(allErr, err.Error())
+					c.Status(400)
+					return c.JSON(&fiber.Map{
+						"success": false,
+						"error":   allErr,
+					})
+					// }
 				}
 			}
 
