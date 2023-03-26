@@ -18,26 +18,17 @@ func main() {
 		select {
 		case <-ticker.C:
 			var err error
-			if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-				conn, err = memphis.Connect(
-					configuration.MEMPHIS_HOST,
-					configuration.ROOT_USER,
-					configuration.CONNECTION_TOKEN,
-					memphis.Reconnect(true),
-					memphis.MaxReconnect(10),
-					memphis.ReconnectInterval(3*time.Second),
-					memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH),
-				)
+			opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
+			username := configuration.ROOT_USER
+			if configuration.USER_PASS_BASED_AUTH {
+				opts = append(opts, memphis.Password(configuration.CONNECTION_TOKEN))
 			} else {
-				conn, err = memphis.Connect(
-					configuration.MEMPHIS_HOST,
-					configuration.ROOT_USER,
-					configuration.CONNECTION_TOKEN,
-					memphis.Reconnect(true),
-					memphis.MaxReconnect(10),
-					memphis.ReconnectInterval(3*time.Second),
-				)
+				opts = append(opts, memphis.ConnectionToken(configuration.CONNECTION_TOKEN))
 			}
+			if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+				opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
+			}
+			conn, err = memphis.Connect(configuration.MEMPHIS_HOST, username, opts...)
 			if err == nil {
 				ticker.Stop()
 				goto serverInit

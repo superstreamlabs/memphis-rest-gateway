@@ -18,6 +18,7 @@
                 "CLIENT_CERT_PATH": "",
                 "CLIENT_KEY_PATH": "",
                 "ROOT_CA_PATH": "",
+                "USER_PASS_BASED_AUTH": "false"
             }
         }
     ]

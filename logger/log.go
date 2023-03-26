@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"rest-gateway/conf"
 	"io/ioutil"
 	"log"
 	"os"
+	"rest-gateway/conf"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,18 +15,18 @@ import (
 )
 
 const (
-	restGwSourceName = "rest-gateway"
-	syslogsStreamName   = "$memphis_syslogs"
-	syslogsInfoSubject  = "extern.info"
-	syslogsWarnSubject  = "extern.warn"
-	syslogsErrSubject   = "extern.err"
-	labelLen            = 3
-	infoLabel           = "[INF] "
-	debugLabel          = "[DBG] "
-	warnLabel           = "[WRN] "
-	errorLabel          = "[ERR] "
-	fatalLabel          = "[FTL] "
-	traceLabel          = "[TRC] "
+	restGwSourceName   = "rest-gateway"
+	syslogsStreamName  = "$memphis_syslogs"
+	syslogsInfoSubject = "extern.info"
+	syslogsWarnSubject = "extern.warn"
+	syslogsErrSubject  = "extern.err"
+	labelLen           = 3
+	infoLabel          = "[INF] "
+	debugLabel         = "[DBG] "
+	warnLabel          = "[WRN] "
+	errorLabel         = "[ERR] "
+	fatalLabel         = "[FTL] "
+	traceLabel         = "[TRC] "
 )
 
 type streamWriter struct {
@@ -68,8 +68,14 @@ func CreateLogger(hostname string, username string, token string) (*Logger, erro
 		AllowReconnect: true,
 		MaxReconnect:   10,
 		ReconnectWait:  3 * time.Second,
-		Token:          username + "::" + token,
 		Name:           "MEMPHIS HTTP LOGGER",
+	}
+
+	if configuration.USER_PASS_BASED_AUTH {
+		natsOpts.Password = configuration.CONNECTION_TOKEN
+		natsOpts.User = configuration.ROOT_USER
+	} else {
+		natsOpts.Token = username + "::" + token
 	}
 
 	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {

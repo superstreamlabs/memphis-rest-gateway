@@ -18,6 +18,7 @@ type Configuration struct {
 	CLIENT_CERT_PATH               string
 	CLIENT_KEY_PATH                string
 	ROOT_CA_PATH                   string
+	USER_PASS_BASED_AUTH           bool
 }
 
 func GetConfig() Configuration {

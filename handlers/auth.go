@@ -34,16 +34,16 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 	var conn *memphis.Conn
 	var err error
-	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-		conn, err = memphis.Connect(
-			configuration.MEMPHIS_HOST,
-			body.Username,
-			body.ConnectionToken,
-			memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH),
-		)
+	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
+	if configuration.USER_PASS_BASED_AUTH {
+		opts = append(opts, memphis.Password(configuration.CONNECTION_TOKEN))
 	} else {
-		conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, body.ConnectionToken)
+		opts = append(opts, memphis.ConnectionToken(configuration.CONNECTION_TOKEN))
 	}
+	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+		opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
+	}
+	conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, opts...)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") {
