@@ -26,6 +26,18 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": err.Error(),
 		})
 	}
+	if body.ConnectionToken != "" && body.Password != "" {
+		log.Errorf("Authenticate: You have to connect with only one of the following methods: connection token / password")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "You have to connect with only one of the following methods: connection token / password",
+		})
+	}
+	if body.ConnectionToken == "" && body.Password == "" {
+		log.Errorf("Authenticate: You have to connect with one of the following methods: connection token / password")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "You have to connect with one of the following methods: connection token / password",
+		})
+	}
 	if err := utils.Validate(body); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"message": err,
@@ -36,9 +48,9 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	var err error
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
 	if configuration.USER_PASS_BASED_AUTH {
-		opts = append(opts, memphis.Password(configuration.CONNECTION_TOKEN))
+		opts = append(opts, memphis.Password(body.Password))
 	} else {
-		opts = append(opts, memphis.ConnectionToken(configuration.CONNECTION_TOKEN))
+		opts = append(opts, memphis.ConnectionToken(body.ConnectionToken))
 	}
 	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
 		opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
