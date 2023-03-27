@@ -58,7 +58,7 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func CreateLogger(hostname string, username string, token string) (*Logger, error) {
+func CreateLogger(hostname string, username string, creds string) (*Logger, error) {
 	configuration := conf.GetConfig()
 	var nc *nats.Conn
 	var err error
@@ -72,10 +72,10 @@ func CreateLogger(hostname string, username string, token string) (*Logger, erro
 	}
 
 	if configuration.USER_PASS_BASED_AUTH {
-		natsOpts.Password = configuration.CONNECTION_TOKEN
-		natsOpts.User = configuration.ROOT_USER
+		natsOpts.Password = creds
+		natsOpts.User = username
 	} else {
-		natsOpts.Token = username + "::" + token
+		natsOpts.Token = username + "::" + creds
 	}
 
 	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
