@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"rest-gateway/conf"
 	"io/ioutil"
 	"log"
 	"os"
+	"rest-gateway/conf"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,18 +15,18 @@ import (
 )
 
 const (
-	restGwSourceName = "rest-gateway"
-	syslogsStreamName   = "$memphis_syslogs"
-	syslogsInfoSubject  = "extern.info"
-	syslogsWarnSubject  = "extern.warn"
-	syslogsErrSubject   = "extern.err"
-	labelLen            = 3
-	infoLabel           = "[INF] "
-	debugLabel          = "[DBG] "
-	warnLabel           = "[WRN] "
-	errorLabel          = "[ERR] "
-	fatalLabel          = "[FTL] "
-	traceLabel          = "[TRC] "
+	restGwSourceName   = "rest-gateway"
+	syslogsStreamName  = "$memphis_syslogs"
+	syslogsInfoSubject = "extern.info"
+	syslogsWarnSubject = "extern.warn"
+	syslogsErrSubject  = "extern.err"
+	labelLen           = 3
+	infoLabel          = "[INF] "
+	debugLabel         = "[DBG] "
+	warnLabel          = "[WRN] "
+	errorLabel         = "[ERR] "
+	fatalLabel         = "[FTL] "
+	traceLabel         = "[TRC] "
 )
 
 type streamWriter struct {
@@ -58,7 +58,7 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func CreateLogger(hostname string, username string, token string) (*Logger, error) {
+func CreateLogger(hostname string, username string, creds string) (*Logger, error) {
 	configuration := conf.GetConfig()
 	var nc *nats.Conn
 	var err error
@@ -68,8 +68,14 @@ func CreateLogger(hostname string, username string, token string) (*Logger, erro
 		AllowReconnect: true,
 		MaxReconnect:   10,
 		ReconnectWait:  3 * time.Second,
-		Token:          username + "::" + token,
 		Name:           "MEMPHIS HTTP LOGGER",
+	}
+
+	if configuration.USER_PASS_BASED_AUTH {
+		natsOpts.Password = creds
+		natsOpts.User = username
+	} else {
+		natsOpts.Token = username + "::" + creds
 	}
 
 	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {

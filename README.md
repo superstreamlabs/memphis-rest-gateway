@@ -96,6 +96,7 @@ curl --location --request POST 'rest_gateway:4444/auth/authenticate' \
 --data-raw '{
     "username": "root",
     "connection_token": "memphis",
+    "password": "memphis, // connect with only one of the following methods: connection token / password
     "token_expiry_in_minutes": 60,
     "refresh_token_expiry_in_minutes": 10000092
 }'
