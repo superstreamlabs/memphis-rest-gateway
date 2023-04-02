@@ -1,6 +1,7 @@
 package router
 
 import (
+	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/middlewares"
 	"rest-gateway/utils"
@@ -12,6 +13,7 @@ import (
 
 // SetupRoutes setup router api
 func SetupRoutes(conn *memphis.Conn, l *logger.Logger) *fiber.App {
+	configuration := conf.GetConfig()
 	utils.InitializeValidations()
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
@@ -23,7 +25,8 @@ func SetupRoutes(conn *memphis.Conn, l *logger.Logger) *fiber.App {
 
 	InitilizeAuthRoutes(app)
 	InitializeStationsRoutes(app, conn)
-	InitilizeMonitoringRoutes(app)
-
+	if configuration.DEV_ENV == "true" {
+		InitilizeMonitoringRoutes(app)
+	}
 	return app
 }
