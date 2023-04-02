@@ -15,10 +15,17 @@ node {
       }
     }
 
- 
-    stage('Build and push image to Docker Hub') {
-      sh "docker buildx use builder"
-      sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --platform linux/amd64,linux/arm64 ."
+    if (env.BRANCH_NAME ==~ /(latest)/) { 
+      stage('Build and push image to Docker Hub') {
+        sh "docker buildx use builder"
+        sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --tag ${repoUrlPrefix}/${imageName}:${versionTag} --platform linux/amd64,linux/arm64 ."
+      }
+    }
+    else {
+      stage('Build and push image to Docker Hub') {
+        sh "docker buildx use builder"
+        sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --platform linux/amd64,linux/arm64 ."
+      }
     }
 	
      if (env.BRANCH_NAME ==~ /(latest)/) {
