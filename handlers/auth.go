@@ -58,7 +58,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, opts...)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "Authorization Violation") {
+		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
 			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Wrong credentials",
