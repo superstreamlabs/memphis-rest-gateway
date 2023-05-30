@@ -20,6 +20,7 @@ type Configuration struct {
 	ROOT_CA_PATH                   string
 	USER_PASS_BASED_AUTH           bool
 	ROOT_PASSWORD                  string
+	DEBUG                          bool
 }
 
 func GetConfig() Configuration {

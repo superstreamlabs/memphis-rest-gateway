@@ -8,8 +8,8 @@ import (
 	"rest-gateway/models"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 var configuration = conf.GetConfig()
@@ -74,6 +74,9 @@ func Authenticate(c *fiber.Ctx) error {
 			tokenString = c.Query("authorization")
 			if tokenString == "" { // fallback - get the token from the query params
 				log.Warnf("Authentication error - jwt token is missing")
+				if configuration.DEBUG {
+					fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+				}
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 					"message": "Unauthorized",
 				})
@@ -82,6 +85,9 @@ func Authenticate(c *fiber.Ctx) error {
 		err = verifyToken(tokenString, configuration.JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - jwt token validation has failed")
+			if configuration.DEBUG {
+				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",
 			})
@@ -90,6 +96,9 @@ func Authenticate(c *fiber.Ctx) error {
 		var body models.RefreshTokenSchema
 		if err := c.BodyParser(&body); err != nil {
 			log.Errorf("Authenticate: %s", err.Error())
+			if configuration.DEBUG {
+				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": err.Error(),
 			})
@@ -97,6 +106,9 @@ func Authenticate(c *fiber.Ctx) error {
 
 		if body.JwtRefreshToken == "" {
 			log.Warnf("Authentication error - refresh token is missing")
+			if configuration.DEBUG {
+				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",
 			})
@@ -105,6 +117,9 @@ func Authenticate(c *fiber.Ctx) error {
 		err := verifyToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - refresh token validation has failed")
+			if configuration.DEBUG {
+				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",
 			})
