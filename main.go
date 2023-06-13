@@ -12,6 +12,12 @@ import (
 
 func main() {
 	configuration := conf.GetConfig()
+	err := conf.Validate(configuration)
+	if err != nil {
+		fmt.Printf("Configuration error: %v", err)
+		return
+	}
+
 	var conn *memphis.Conn
 	ticker := time.NewTicker(1 * time.Second)
 	for {

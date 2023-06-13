@@ -1,8 +1,13 @@
 package middlewares
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/models"
@@ -65,6 +70,91 @@ func verifyToken(tokenString string, secret string) error {
 }
 
 func Authenticate(c *fiber.Ctx) error {
+	switch configuration.AUTH_METHOD {
+	case "jwt":
+		return AuthenticateJWT(c)
+	case "api_token":
+		return AuthenticateAPIToken(c)
+	case "hmac_token":
+		return AuthenticateHmacToken(c)
+	case "none":
+		return AuthenticateNone(c)
+	default:
+		/* default authentication method for backward compatibility with older configuration files. */
+		return AuthenticateJWT(c)
+	}
+}
+
+func AuthenticateNone(c *fiber.Ctx) error {
+	return c.Next()
+}
+
+func AuthenticateAPIToken(c *fiber.Ctx) error {
+	log := logger.GetLogger(c)
+	headers := c.GetReqHeaders()
+
+	api_token, ok := headers[configuration.API_TOKEN_HEADER]
+	if !ok || api_token == "" {
+		log.Warnf("Authentication error - API token header is either empty or missing")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized",
+		})
+	}
+
+	if api_token != configuration.API_TOKEN {
+		log.Warnf("Authentication error - API token mismatch")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized",
+		})
+	}
+
+	return c.Next()
+}
+
+func AuthenticateHmacToken(c *fiber.Ctx) error {
+	var hash hash.Hash
+
+	log := logger.GetLogger(c)
+	headers := c.GetReqHeaders()
+
+	signature, ok := headers[configuration.HMAC_TOKEN_HEADER]
+	if !ok || signature == "" {
+		log.Warnf("Authentication error - token header is either empty or missing")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized",
+		})
+	}
+
+	secret := []byte(configuration.HMAC_TOKEN_SECRET)
+
+	switch configuration.HMAC_TOKEN_HASH {
+	case "sha512":
+		hash = hmac.New(sha512.New, secret)
+	case "sha256":
+		hash = hmac.New(sha256.New, secret)
+	default:
+		log.Warnf("Authentication error - hmac hash is missing")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized",
+		})
+
+	}
+
+	body := c.Body()
+	hash.Write(body)
+	calculated_signature := hex.EncodeToString(hash.Sum(nil))
+
+	if calculated_signature != signature {
+		log.Warnf("Authentication error - signature mismatch")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized",
+		})
+	}
+
+	return c.Next()
+}
+
+func AuthenticateJWT(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	path := strings.ToLower(string(c.Context().URI().RequestURI()))
 	if isAuthNeeded(path) {
