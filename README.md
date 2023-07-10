@@ -73,7 +73,234 @@ Memphis REST (HTTP) gateway makes use of JWT-type identification.\
 
 ### API Token
 
-Soon.
+Memphis REST (HTTP) gateway can be configured to use API-tokens as the default authentication method, see AUTH_METHOD below.
+
+### AUTH_METHOD
+
+The global setting AUTH_METHOD can be used to control the default authentication method.
+AUTH_METHOD can be set to one of the values listed in the table below.
+
+| Value      | Description                                                         |
+|------------|---------------------------------------------------------------------|
+| jwt        | JWT-type authentication.                                            |
+| api_token  | API token authentication.                                           |
+| hmac_token | HMAC (Hash-based Message Authentication Code) token authentication. |
+| none       | No authentication.                                                  |
+
+If the AUTH_METHOD configuration option is missing then authentication method defaults to JWT.
+
+
+#### JWT Authentication
+
+If AUTH_METHOD is set to 'jwt', then the configuration options in the table below can be used.
+
+| Variable                       | Description                                            |
+|--------------------------------|--------------------------------------------------------|
+| JWT_SECRET                     | The secret key used to generate the JWT token.         |
+| JWT_EXPIRES_IN_MINUTES         | The JWT token valid time in minutes.                   |
+| REFRESH_JWT_SECRET             | The secret key used to generate the JWT refresh token. |
+| REFRESH_JWT_EXPIRES_IN_MINUTES | The JWT refresh token valid time in minutes.           |
+
+#### API Token
+
+If AUTH_METHOD is set to api_token, then the configuration options in the table below can be used.
+
+| Variable                       | Description                                                   |
+|--------------------------------|---------------------------------------------------------------|
+| API_TOKEN_HEADER               | Name of HTML-header that contains the API token.              |
+| API_TOKEN                      | API token shared between the client and memphis-rest-gateway. |
+
+Example configuration:
+````
+{
+  "VERSION": "1.0.2",
+   "AUTH_METHOD": "api_token",
+   "API_TOKEN_HEADER": "X-Api-Token",
+   "API_TOKEN": "EibA9ypmW7XPpn"
+}
+````
+
+Example usage:
+````
+#!/bin/bash
+
+now=`date`
+msg="auth: api token station: api_token date: ${now}"
+
+curl -s -XPOST 'http://localhost:4444/stations/api_station/produce/single' \
+        -H 'Content-Type: application/json' \
+        -H 'X-API-TOKEN: EibA9ypmW7XPpn' \
+        --data-raw "{\"message\": \"$msg\"}"
+````
+
+
+
+#### HMAC Token
+
+HMAC (Hash-based Message Authentication Code) token authentication is a method of securing and validating tokens in token-based authentication systems. 
+It involves using a symmetric cryptographic algorithm and a secret key to generate and verify a signature attached to the token.
+
+If AUTH_METHOD is set to hmac_token, then the configuration options in the table below can be used.
+
+| Variable          | Description                                                                                                                               |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+|	HMAC_TOKEN_HEADER | Name of header of the body signature. The body signature is a MAC hex digest of the body calcuated using the TOKEN_SECRET as the hash key.|
+|	HMAC_TOKEN_SECRET | A shared secret between the client and memphis-rest-gateway for calculating the body signature.                                           |
+|	HMAC_TOKEN_HASH   | Hash algorithm for calculating the body signature, can be either sha256 or sha512.                                                        |
+
+Example configuration:
+````
+{
+  "VERSION": "1.0.2",
+  "AUTH_METHOD": "hmac_token",
+  "HMAC_TOKEN_HEADER": "X-Hook-Signature",
+  "HMAC_TOKEN_SECRET": "super secret string",
+  "HMAC_TOKEN_HASH": "sha512"
+}
+````
+
+Example usage:
+````
+#!/usr/bin/python3 
+
+import hashlib
+import hmac
+import base64
+import requests
+
+url = "http://localhost:4444/stations/hmac_station/produce/single"
+msg_quoted    = "\"Quoted Message\""
+msg_unquoted  = "Quoted Message"
+
+secret  = bytes('super secret string', 'utf-8')
+message = bytes(msg_quoted, 'utf-8')
+
+hash = hmac.new(secret, message, hashlib.sha512)
+sig = hash.hexdigest()
+
+headers = {"X-Hook-Signature":  sig }
+
+response = requests.post(url, headers=headers, json=msg_unquoted)
+print("Status Code", response.status_code)
+print(response.json())
+````
+
+
+
+
+#### None
+
+No authentication method is used.
+
+Example configuration:
+````
+{
+  "VERSION": "1.0.2",
+  "AUTH_METHOD": "none"
+}
+````
+
+Example usage:
+````
+#!/bin/bash
+
+now=`date`
+msg="auth: none station: none date: ${now}"
+
+curl -s -XPOST 'http://localhost:4444/stations/none_station/produce/single' \
+        -H 'Content-Type: application/json' \
+        --data-raw "{\"message\": \"$msg\"}"
+````
+
+
+### AUTH_METHOD per station
+
+It is possible to set individual authentication methods per station using the 'Stations' configuration option.
+Any station specific configuration overrides the global authentication methods.
+All stations has to have a 'NAME' configured.
+
+````
+{
+  "VERSION": "1.0.2",
+  "JWT_EXPIRES_IN_MINUTES": 15,
+  "REFRESH_JWT_EXPIRES_IN_MINUTES": 300,
+  "Stations": [
+    {
+      "NAME": "none_station",
+      "AUTH_METHOD": "none" 
+    },
+    {
+      "NAME": "api_station",
+      "AUTH_METHOD": "api_token",
+      "API_TOKEN_HEADER": "X-Api-Token",
+      "API_TOKEN": "EibA9ypmW7XPpn"
+    },
+    {
+      "NAME": "hmac_station",
+      "AUTH_METHOD": "hmac_token",
+      "HMAC_TOKEN_HEADER": "X-Hook-Signature",
+      "HMAC_TOKEN_SECRET": "super secret string",
+      "HMAC_TOKEN_HASH": "sha512"
+    },
+    {
+      "NAME": "jwt_station",
+      "AUTH_METHOD": "jwt",
+      "JWT_SECRET": "jwt_station secret",
+      "REFRESH_JWT_SECRET": "jwt_station refresh secret"
+    
+    }
+  ]
+}
+````
+
+Note that if a station is configured to use 'jwt', then the path to aquire the token and to refresh a token has to include the name of the station.
+
+Example acquiring a jwt token for a configured station:
+````
+#!/bin/bash
+
+raw_token=$(curl -s -XPOST 'http://localhost:4444/auth/authenticate/jwt_station' \
+                 -H 'Content-Type: application/json' \
+                 --data-raw '{
+                     "username": "root",
+                     "password": "memphis",
+                     "token_expiry_in_minutes": 1,
+                     "refresh_token_expiry_in_minutes": 2
+                 }')
+
+token=$(echo $raw_token | jq -r .jwt)
+refresh_token=$(echo $raw_token | jq -r .jwt_refresh_token)
+
+now=`date`
+msg="auth: jwt station: jwt date: ${now}"
+
+curl -s -XPOST 'http://localhost:4444/stations/jwt_station/produce/single' \
+        -H "Authorization: Bearer $token" \
+        -H 'Content-Type: application/json' \
+        --data-raw "{\"message\": \"$msg\"}"
+````
+
+Example refresing a jwt token for a configured station:
+````
+new_token=$(curl -s -XPOST 'http://localhost:4444/auth/refreshToken/jwt_station' \
+                    -H 'Content-Type: application/json' \
+                    --data-raw '{
+                            "jwt_refresh_token": "$refresh_token",
+                            "token_expiry_in_minutes": 1,
+                            "refresh_token_expiry_in_minutes": 2
+                    }' | jq -r .jwt)
+
+now=`date`
+msg="auth: jwt station: jwt date: ${now}"
+
+curl -s -XPOST 'http://localhost:4444/stations/jwt_station/produce/single' \
+        -H "Authorization: Bearer $new_token" \
+        -H 'Content-Type: application/json' \
+        --data-raw "{\"message\": \"$msg\"}"
+
+````
+
+
 
 ## Sequence diagram
 

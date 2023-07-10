@@ -1,10 +1,11 @@
 package router
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"rest-gateway/conf"
 	"rest-gateway/handlers"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 func InitilizeMonitoringRoutes(app *fiber.App) {

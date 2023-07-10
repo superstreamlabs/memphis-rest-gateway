@@ -1,3 +1,7 @@
+/*
+	Memphis authentication.
+*/
+
 package handlers
 
 import (
@@ -8,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/memphisdev/memphis.go"
 )
 
@@ -20,13 +24,41 @@ type AuthHandler struct{}
 func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	var body models.AuthSchema
+
+	stationName := c.Params("stationName")
+
+	user_pass_based_auth := configuration.USER_PASS_BASED_AUTH
+	client_cert_path := configuration.CLIENT_CERT_PATH
+	client_key_path := configuration.CLIENT_KEY_PATH
+	root_ca_path := configuration.ROOT_CA_PATH
+	memphis_host := configuration.MEMPHIS_HOST
+	jwt_expires_in_minutes := configuration.JWT_EXPIRES_IN_MINUTES
+	jwt_secret := configuration.JWT_SECRET
+	refresh_jwt_secret := configuration.REFRESH_JWT_SECRET
+
+	for _, station := range configuration.Stations {
+		if station.NAME == stationName {
+			if station.JWT_EXPIRES_IN_MINUTES != 0 {
+				jwt_expires_in_minutes = station.JWT_EXPIRES_IN_MINUTES
+			}
+
+			if station.JWT_SECRET != "" {
+				jwt_secret = station.JWT_SECRET
+			}
+
+			if station.REFRESH_JWT_SECRET != "" {
+				refresh_jwt_secret = station.REFRESH_JWT_SECRET
+			}
+		}
+	}
+
 	if err := c.BodyParser(&body); err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
 	}
-	
+
 	if err := utils.Validate(body); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"message": err,
@@ -36,15 +68,15 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	var conn *memphis.Conn
 	var err error
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
-	if configuration.USER_PASS_BASED_AUTH {
+	if user_pass_based_auth {
 		opts = append(opts, memphis.Password(body.Password))
 	} else {
 		opts = append(opts, memphis.ConnectionToken(body.ConnectionToken))
 	}
-	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-		opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
+	if client_cert_path != "" && client_key_path != "" && root_ca_path != "" {
+		opts = append(opts, memphis.Tls(client_cert_path, client_key_path, root_ca_path))
 	}
-	conn, err = memphis.Connect(configuration.MEMPHIS_HOST, body.Username, opts...)
+	conn, err = memphis.Connect(memphis_host, body.Username, opts...)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
@@ -60,7 +92,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 	conn.Close()
-	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, jwt_expires_in_minutes, jwt_secret, refresh_jwt_secret)
 	if err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -76,26 +108,26 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	})
 }
 
-func createTokens(tokenExpiryMins, refreshTokenExpiryMins int) (string, string, int, int, error) {
+func createTokens(tokenExpiryMins int, refreshTokenExpiryMins int, jwt_expires_in_minutes int, jwt_secret string, refresh_jwt_secret string) (string, string, int, int, error) {
 	if tokenExpiryMins <= 0 {
-		tokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+		tokenExpiryMins = jwt_expires_in_minutes
 	}
 
 	if refreshTokenExpiryMins <= 0 {
-		refreshTokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+		refreshTokenExpiryMins = jwt_expires_in_minutes
 	}
 
 	atClaims := jwt.MapClaims{}
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	token, err := at.SignedString([]byte(configuration.JWT_SECRET))
+	token, err := at.SignedString([]byte(jwt_secret))
 	if err != nil {
 		return "", "", 0, 0, err
 	}
 
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	refreshToken, err := at.SignedString([]byte(configuration.REFRESH_JWT_SECRET))
+	refreshToken, err := at.SignedString([]byte(refresh_jwt_secret))
 	if err != nil {
 		return "", "", 0, 0, err
 	}
@@ -105,6 +137,29 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int) (string, string, 
 func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	var body models.RefreshTokenSchema
+
+	stationName := c.Params("stationName")
+
+	jwt_expires_in_minutes := configuration.JWT_EXPIRES_IN_MINUTES
+	jwt_secret := configuration.JWT_SECRET
+	refresh_jwt_secret := configuration.REFRESH_JWT_SECRET
+
+	for _, station := range configuration.Stations {
+		if station.NAME == stationName {
+			if station.JWT_EXPIRES_IN_MINUTES != 0 {
+				jwt_expires_in_minutes = station.JWT_EXPIRES_IN_MINUTES
+			}
+
+			if station.JWT_SECRET != "" {
+				jwt_secret = station.JWT_SECRET
+			}
+
+			if station.REFRESH_JWT_SECRET != "" {
+				refresh_jwt_secret = station.REFRESH_JWT_SECRET
+			}
+		}
+	}
+
 	if err := c.BodyParser(&body); err != nil {
 		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -117,7 +172,7 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
-	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins)
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, jwt_expires_in_minutes, jwt_secret, refresh_jwt_secret)
 	if err != nil {
 		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

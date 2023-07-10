@@ -3,17 +3,16 @@ module rest-gateway
 go 1.18
 
 require (
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.40.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/memphisdev/memphis.go v0.2.2
 	github.com/nats-io/nats.go v1.25.0
-	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
 
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/router"
@@ -12,6 +14,17 @@ import (
 
 func main() {
 	configuration := conf.GetConfig()
+	err := conf.Validate(configuration)
+	if err != nil {
+		configurationJSON, marshalError := json.MarshalIndent(configuration, "", "  ")
+		if marshalError != nil {
+			panic(marshalError)
+		}
+		fmt.Printf("Configuration: %s\n", string(configurationJSON))
+		log.Fatalf("Configuration error: %v", err)
+		return
+	}
+
 	var conn *memphis.Conn
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -46,7 +59,6 @@ serverInit:
 	if err != nil {
 		panic("Logger creation failed - " + err.Error())
 	}
-
 	app := router.SetupRoutes(conn, l)
 	l.Noticef("Memphis REST gateway is up and running")
 	l.Noticef("Version %s", configuration.VERSION)

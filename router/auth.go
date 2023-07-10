@@ -8,8 +8,12 @@ import (
 )
 
 func InitilizeAuthRoutes(app *fiber.App) {
+
 	authHandler := handlers.AuthHandler{}
 	api := app.Group("/auth", logger.New())
 	api.Post("/authenticate", authHandler.Authenticate)
 	api.Post("/refreshToken", authHandler.RefreshToken)
+	api.Post("/authenticate/:stationName", authHandler.Authenticate)
+	api.Post("/refreshToken/:stationName", authHandler.RefreshToken)
+
 }
