@@ -1,4 +1,4 @@
-module rest-gateway
+module github.com/memphisdev/memphis-rest-gateway
 
 go 1.18
 
