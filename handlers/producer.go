@@ -3,12 +3,42 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"regexp"
 	"rest-gateway/logger"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/memphisdev/memphis.go"
 )
+
+func getTenantNameAndUserFromToken(bearerToken string) (string, string, error) {
+	re := regexp.MustCompile(`Bearer\s+(.*?)$`)
+	matches := re.FindStringSubmatch(bearerToken)
+
+	if len(matches) < 2 {
+		return "", "", fmt.Errorf("Bearer token not found in the bearerToken")
+	}
+
+	token := matches[1]
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return []byte(configuration.JWT_SECRET), nil
+	})
+	claims, ok := parsedToken.Claims.(jwt.MapClaims)
+	if !ok {
+		// Handle the case where the claims are not of the expected type
+	}
+	if err != nil {
+		return "", "", err
+	}
+
+	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
+	username := claims["username"].(string)
+
+	return tenantName, username, nil
+}
 
 func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	hdrs := memphis.Headers{}
@@ -23,7 +53,7 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	return hdrs, nil
 }
 
-func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
+func CreateHandleMessage() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
@@ -46,7 +76,20 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
 				return err
 			}
-			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
+			tenantName, username, _ := getTenantNameAndUserFromToken(headers["Authorization"])
+			conn := connectionsCache[tenantName][username].Connection
+			if conn == nil {
+				errMsg := fmt.Sprintf("Connection does not exists")
+				log.Errorf("CreateHandleMessage - produce: %s", errMsg)
+
+				c.Status(500)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   errMsg,
+				})
+			}
+
+			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
 				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
 				c.Status(500)
@@ -67,7 +110,7 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 	}
 }
 
-func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
+func CreateHandleBatch() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
 		stationName := c.Params("stationName")
@@ -89,6 +132,19 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 				return err
 			}
 
+			tenantName, username, _ := getTenantNameAndUserFromToken(headers["Authorization"])
+			conn := connectionsCache[tenantName][username].Connection
+			if conn == nil {
+				errMsg := fmt.Sprintf("Connection does not exists")
+				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
+
+				c.Status(500)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   errMsg,
+				})
+			}
+
 			errCount := 0
 			var allErr []string
 			for _, msg := range batchReq {
@@ -98,7 +154,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 					allErr = append(allErr, err.Error())
 					continue
 				}
-				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
+				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
 					log.Errorf("CreateHandleBatch - produce: %s", err.Error())
 					errCount++
 					allErr = append(allErr, err.Error())

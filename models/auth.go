@@ -6,6 +6,7 @@ type AuthSchema struct {
 	Password               string `json:"password"`
 	TokenExpiryMins        int    `json:"token_expiry_in_minutes"`
 	RefreshTokenExpiryMins int    `json:"refresh_token_expiry_in_minutes"`
+	AccountId              int    `json:"account_id"`
 }
 
 type RefreshTokenSchema struct {

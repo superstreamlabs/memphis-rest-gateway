@@ -40,22 +40,26 @@ type Logger struct {
 
 func (sw streamWriter) Write(p []byte) (int, error) {
 	os.Stderr.Write(p)
-	logLabelToSubjectMap := map[string]string{"INF": syslogsInfoSubject,
-		"WRN": syslogsWarnSubject,
-		"ERR": syslogsErrSubject}
+	configuration := conf.GetConfig()
+	if configuration.DEV_ENV == "true" {
+		logLabelToSubjectMap := map[string]string{"INF": syslogsInfoSubject,
+			"WRN": syslogsWarnSubject,
+			"ERR": syslogsErrSubject}
 
-	label := string(p[sw.labelStart : sw.labelStart+labelLen])
-	subjectSuffix, ok := logLabelToSubjectMap[label]
-	if !ok { // skip other labels
-		return 0, nil
-	}
+		label := string(p[sw.labelStart : sw.labelStart+labelLen])
+		subjectSuffix, ok := logLabelToSubjectMap[label]
+		if !ok { // skip other labels
+			return 0, nil
+		}
 
-	subject := fmt.Sprintf("%s.%s.%s", syslogsStreamName, restGwSourceName, subjectSuffix)
-	err := sw.nc.Publish(subject, p)
-	if err != nil {
-		return 0, err
+		subject := fmt.Sprintf("%s.%s.%s", syslogsStreamName, restGwSourceName, subjectSuffix)
+		err := sw.nc.Publish(subject, p)
+		if err != nil {
+			return 0, err
+		}
 	}
 	return len(p), nil
+
 }
 
 func CreateLogger(hostname string, username string, creds string) (*Logger, error) {
