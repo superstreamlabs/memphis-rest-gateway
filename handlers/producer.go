@@ -19,25 +19,33 @@ func getTenantNameAndUserFromToken(bearerToken string) (string, string, error) {
 	matches := re.FindStringSubmatch(bearerToken)
 
 	if len(matches) < 2 {
-		return "", "", fmt.Errorf("Bearer token not found in the bearerToken")
+		return "", "", fmt.Errorf("getTenantNameAndUserFromToken: Bearer token not found in the bearerToken")
 	}
 
 	token := matches[1]
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(configuration.JWT_SECRET), nil
-	})
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	if !ok {
-		// Handle the case where the claims are not of the expected type
-	}
+	claims, err := getDetailsFromToken(token, configuration.JWT_SECRET)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("getTenantNameAndUserFromToken: %s", err.Error())
 	}
 
 	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
 	username := claims["username"].(string)
 
 	return tenantName, username, nil
+}
+
+func getDetailsFromToken(token, secret string) (jwt.MapClaims, error) {
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return jwt.MapClaims{}, err
+	}
+	claims, ok := parsedToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return jwt.MapClaims{}, fmt.Errorf("getDetailsFromToken: Claims are not of the expected type")
+	}
+	return claims, nil
 }
 
 func handleHeaders(headers map[string]string) (memphis.Headers, error) {
@@ -76,7 +84,15 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
 				return err
 			}
-			tenantName, username, _ := getTenantNameAndUserFromToken(headers["Authorization"])
+			tenantName, username, err := getTenantNameAndUserFromToken(headers["Authorization"])
+			if err != nil {
+				log.Errorf("CreateHandleMessage - getTenantNameAndUserFromToken: %s", err.Error())
+				c.Status(500)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   err.Error(),
+				})
+			}
 			conn := connectionsCache[tenantName][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exists")
@@ -132,7 +148,11 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 				return err
 			}
 
-			tenantName, username, _ := getTenantNameAndUserFromToken(headers["Authorization"])
+			tenantName, username, err := getTenantNameAndUserFromToken(headers["Authorization"])
+			if err != nil {
+				log.Errorf("CreateHandleBatch - getTenantNameAndUserFromToken: %s", err.Error())
+				return err
+			}
 			conn := connectionsCache[tenantName][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exists")

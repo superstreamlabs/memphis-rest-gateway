@@ -59,7 +59,6 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 		}
 	}
 	return len(p), nil
-
 }
 
 func CreateLogger(hostname string, username string, creds string) (*Logger, error) {

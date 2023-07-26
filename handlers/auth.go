@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/models"
@@ -28,7 +27,7 @@ var connectionsCache = map[string]map[string]Connection{}
 
 func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	var err error
-	if accountId == 0 {
+	if accountId == 0 || !configuration.USER_PASS_BASED_AUTH {
 		accountId = 1
 	}
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
@@ -63,10 +62,6 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	if body.AccountId == 0 || !configuration.USER_PASS_BASED_AUTH {
-		body.AccountId = 1
-	}
-
 	conn, err := connect(body.Password, body.Username, body.ConnectionToken, body.AccountId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
@@ -89,15 +84,11 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": "Create tokens error",
 		})
 	}
-
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(configuration.JWT_SECRET), nil
-	})
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	if !ok {
-		log.Errorf("Authenticate: Claims are not of the expected type")
+	claims, err := getDetailsFromToken(token, configuration.JWT_SECRET)
+	if err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Claims are not of the expected type",
+			"message": "Get details tokens error",
 		})
 	}
 
@@ -110,8 +101,6 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	}
 
 	connectionsCache[tenantName][username] = Connection{Connection: conn, ExpireDate: tokenExpire}
-	// conn.Close()
-
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -167,15 +156,11 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 			"message": err,
 		})
 	}
-
-	parsedRefreshToken, err := jwt.Parse(body.JwtRefreshToken, func(token *jwt.Token) (interface{}, error) {
-		return []byte(configuration.REFRESH_JWT_SECRET), nil
-	})
-	claims, ok := parsedRefreshToken.Claims.(jwt.MapClaims)
-	if !ok {
-		log.Errorf("RefreshToken: Claims are not of the expected type")
+	claims, err := getDetailsFromToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
+	if err != nil {
+		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Claims are not of the expected type",
+			"message": "Get details tokens error",
 		})
 	}
 
@@ -184,7 +169,6 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	tokenExpire := claims["exp"].(float64)
 	password := claims["password"].(string)
 	connectionToken := claims["connection_token"].(string)
-	//
 
 	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, username, int(claims["account_id"].(float64)), password, connectionToken)
 	if err != nil {
@@ -197,7 +181,7 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	conn, err := connect(password, username, connectionToken, int(claims["account_id"].(float64)))
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
-			log.Warnf("Authentication error")
+			log.Warnf("RefreshToken: Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Wrong credentials",
 			})
@@ -227,15 +211,14 @@ func CleanConnectionsCache() {
 	for range time.Tick(time.Second * 30) {
 		for t, tenant := range connectionsCache {
 			for u, user := range tenant {
-				fmt.Println(user)
 
 				currentTime := time.Now()
 				unixTimeNow := currentTime.Unix()
 
 				conn := connectionsCache[t][u].Connection
-				conn.Close()
 
 				if unixTimeNow > int64(user.ExpireDate) {
+					conn.Close()
 					delete(connectionsCache[t], u)
 				}
 			}
