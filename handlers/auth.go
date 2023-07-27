@@ -27,7 +27,7 @@ var connectionsCache = map[string]map[string]Connection{}
 
 func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	var err error
-	if accountId == 0 || !configuration.USER_PASS_BASED_AUTH {
+	if accountId == 0 && configuration.USER_PASS_BASED_AUTH {
 		accountId = 1
 	}
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
@@ -133,6 +133,7 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 
 	atClaims["password"] = password
 	atClaims["connection_token"] = connectionToken
+	atClaims["token_exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	refreshToken, err := at.SignedString([]byte(configuration.REFRESH_JWT_SECRET))
@@ -166,7 +167,6 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
 	username := claims["username"].(string)
-	tokenExpire := claims["exp"].(float64)
 	password := claims["password"].(string)
 	connectionToken := claims["connection_token"].(string)
 
@@ -193,6 +193,15 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
+	claims, err = getDetailsFromToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
+	if err != nil {
+		log.Errorf("RefreshToken: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Get details tokens error",
+		})
+	}
+	tokenExpire := claims["token_exp"].(float64)
+
 	if connectionsCache[tenantName] == nil {
 		connectionsCache[tenantName] = make(map[string]Connection)
 	}
@@ -211,10 +220,8 @@ func CleanConnectionsCache() {
 	for range time.Tick(time.Second * 30) {
 		for t, tenant := range connectionsCache {
 			for u, user := range tenant {
-
 				currentTime := time.Now()
 				unixTimeNow := currentTime.Unix()
-
 				conn := connectionsCache[t][u].Connection
 
 				if unixTimeNow > int64(user.ExpireDate) {

@@ -20,7 +20,8 @@
                 "CLIENT_KEY_PATH": "",
                 "ROOT_CA_PATH": "",
                 "USER_PASS_BASED_AUTH": "true",
-                "ROOT_PASSWORD": "memphis"
+                "ROOT_PASSWORD": "memphis",
+                "CLOUD_ENV": "false"
             }
         }
     ]
