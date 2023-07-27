@@ -19,6 +19,7 @@ func initalizeLogger() *logger.Logger {
 			username := configuration.ROOT_USER
 			// if configuration.USER_PASS_BASED_AUTH {
 			// FOR TEST
+			fmt.Println("in ticker")
 			username = "$memphis"
 			creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
 			// }
@@ -35,6 +36,7 @@ func initalizeLogger() *logger.Logger {
 
 func main() {
 	configuration := conf.GetConfig()
+	fmt.Println("initalizeLogger")
 	l := initalizeLogger()
 	go handlers.CleanConnectionsCache()
 	app := router.SetupRoutes(l)
