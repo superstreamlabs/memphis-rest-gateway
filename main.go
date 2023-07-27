@@ -17,10 +17,11 @@ func initalizeLogger() *logger.Logger {
 		case <-ticker.C:
 			creds := configuration.CONNECTION_TOKEN
 			username := configuration.ROOT_USER
-			if configuration.USER_PASS_BASED_AUTH {
-				username = "$memphis"
-				creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
-			}
+			// if configuration.USER_PASS_BASED_AUTH {
+			// FOR TEST
+			username = "$memphis"
+			creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
+			// }
 			l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, username, creds)
 			if err != nil {
 				fmt.Printf("Awaiting to establish connection with Memphis - %v\n", err.Error())
