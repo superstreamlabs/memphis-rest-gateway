@@ -41,6 +41,8 @@ type Logger struct {
 func (sw streamWriter) Write(p []byte) (int, error) {
 	os.Stderr.Write(p)
 	configuration := conf.GetConfig()
+	// **** only for test ****
+	configuration.CLOUD_ENV = "false"
 	if configuration.CLOUD_ENV == "false" {
 		logLabelToSubjectMap := map[string]string{"INF": syslogsInfoSubject,
 			"WRN": syslogsWarnSubject,
