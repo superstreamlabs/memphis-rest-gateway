@@ -17,6 +17,7 @@ func initalizeLogger() *logger.Logger {
 		case <-ticker.C:
 			creds := configuration.CONNECTION_TOKEN
 			username := configuration.ROOT_USER
+			configuration.USER_PASS_BASED_AUTH = true
 			// if configuration.USER_PASS_BASED_AUTH {
 			// FOR TEST
 			fmt.Println("in ticker")
