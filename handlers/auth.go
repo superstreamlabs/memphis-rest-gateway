@@ -217,7 +217,6 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 func CleanConnectionsCache() {
 	for range time.Tick(time.Second * 30) {
-		connectionsCache := map[string]map[string]Connection{}
 		fmt.Println("connectionsCache", connectionsCache)
 		for t, tenant := range connectionsCache {
 			for u, user := range tenant {
