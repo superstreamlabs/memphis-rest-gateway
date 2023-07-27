@@ -1,17 +1,15 @@
 package main
 
 import (
-	"os"
-	"os/signal"
+	"fmt"
 	"rest-gateway/conf"
 	"rest-gateway/handlers"
 	"rest-gateway/logger"
 	"rest-gateway/router"
-	"syscall"
 	"time"
 )
 
-func initalizeLogger() {
+func initalizeLogger() *logger.Logger {
 	configuration := conf.GetConfig()
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -25,21 +23,22 @@ func initalizeLogger() {
 			}
 			l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, username, creds)
 			if err != nil {
-				panic("Logger creation failed - " + err.Error())
+				fmt.Printf("Awaiting to establish connection with Memphis - %v\n", err.Error())
+			} else {
+				ticker.Stop()
+				return l
 			}
-
-			app := router.SetupRoutes(l)
-			l.Noticef("Memphis REST gateway is up and running")
-			l.Noticef("Version %s", configuration.VERSION)
-			app.Listen(":" + configuration.HTTP_PORT)
 		}
 	}
 }
 
 func main() {
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, syscall.SIGINT, syscall.SIGTERM)
-	go initalizeLogger()
+	configuration := conf.GetConfig()
+	l := initalizeLogger()
 	go handlers.CleanConnectionsCache()
-	<-interruptCh
+	app := router.SetupRoutes(l)
+	l.Noticef("Memphis REST gateway is up and running")
+	l.Noticef("Version %s", configuration.VERSION)
+	app.Listen(":" + configuration.HTTP_PORT)
+
 }

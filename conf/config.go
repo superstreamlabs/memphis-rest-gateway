@@ -21,7 +21,7 @@ type Configuration struct {
 	USER_PASS_BASED_AUTH           bool
 	ROOT_PASSWORD                  string
 	DEBUG                          bool
-	CLOUD_ENV                      string
+	CLOUD_ENV                      bool
 }
 
 func GetConfig() Configuration {

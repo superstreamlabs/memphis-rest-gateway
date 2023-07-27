@@ -4,49 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
-	"rest-gateway/logger"
 	"strconv"
+
+	"rest-gateway/logger"
+	"rest-gateway/models"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/memphisdev/memphis.go"
 )
-
-func getTenantNameAndUserFromToken(bearerToken string) (string, string, error) {
-	re := regexp.MustCompile(`Bearer\s+(.*?)$`)
-	matches := re.FindStringSubmatch(bearerToken)
-
-	if len(matches) < 2 {
-		return "", "", fmt.Errorf("getTenantNameAndUserFromToken: Bearer token not found in the bearerToken")
-	}
-
-	token := matches[1]
-	claims, err := getDetailsFromToken(token, configuration.JWT_SECRET)
-	if err != nil {
-		return "", "", fmt.Errorf("getTenantNameAndUserFromToken: %s", err.Error())
-	}
-
-	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
-	username := claims["username"].(string)
-
-	return tenantName, username, nil
-}
-
-func getDetailsFromToken(token, secret string) (jwt.MapClaims, error) {
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
-	if err != nil {
-		return jwt.MapClaims{}, err
-	}
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return jwt.MapClaims{}, fmt.Errorf("getDetailsFromToken: Claims are not of the expected type")
-	}
-	return claims, nil
-}
 
 func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	hdrs := memphis.Headers{}
@@ -82,26 +48,34 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
-				return err
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
 			}
-			tenantName, username, err := getTenantNameAndUserFromToken(headers["Authorization"])
-			if err != nil {
-				log.Errorf("CreateHandleMessage - getTenantNameAndUserFromToken: %s", err.Error())
+			userData, ok := c.Locals("userData").(models.AuthSchema)
+			if !ok {
+				log.Errorf("CreateHandleMessage - userData: failed get user details from middleware")
 				c.Status(500)
 				return c.JSON(&fiber.Map{
 					"success": false,
-					"error":   err.Error(),
+					"error":   "Server error",
 				})
 			}
-			conn := connectionsCache[tenantName][username].Connection
+
+			username := userData.Username
+			accountId := userData.AccountId
+			accountIdStr := strconv.Itoa(int(accountId))
+			conn := connectionsCache[accountIdStr][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exists")
 				log.Errorf("CreateHandleMessage - produce: %s", errMsg)
 
-				c.Status(500)
+				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
-					"error":   errMsg,
+					"error":   "Server error",
 				})
 			}
 
@@ -145,15 +119,27 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				log.Errorf("CreateHandleBatch - handleHeaders: %s", err.Error())
-				return err
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
 			}
 
-			tenantName, username, err := getTenantNameAndUserFromToken(headers["Authorization"])
-			if err != nil {
-				log.Errorf("CreateHandleBatch - getTenantNameAndUserFromToken: %s", err.Error())
-				return err
+			userData, ok := c.Locals("userData").(models.AuthSchema)
+			if !ok {
+				log.Errorf("CreateHandleBatch - userData: failed get user details from middleware")
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
 			}
-			conn := connectionsCache[tenantName][username].Connection
+
+			username := userData.Username
+			accountId := userData.AccountId
+			accountIdStr := strconv.Itoa(int(accountId))
+			conn := connectionsCache[accountIdStr][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exists")
 				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
@@ -161,7 +147,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 				c.Status(500)
 				return c.JSON(&fiber.Map{
 					"success": false,
-					"error":   errMsg,
+					"error":   "Server error",
 				})
 			}
 

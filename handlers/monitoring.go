@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"rest-gateway/logger"
 	"os"
 	"os/exec"
+	"rest-gateway/logger"
 	"runtime"
 	"strconv"
 	"strings"
@@ -30,7 +30,7 @@ func (ih MonitoringHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 		if err != nil {
 			log.Errorf("GetResourcesUtilization: exec command: %s", err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": err.Error(),
+				"message": "Server error",
 			})
 		}
 		output := string(out[:])
@@ -41,7 +41,7 @@ func (ih MonitoringHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 			if err != nil {
 				log.Errorf("GetResourcesUtilization: cpuUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"message": err.Error(),
+					"message": "Server error",
 				})
 			}
 		}
@@ -49,7 +49,7 @@ func (ih MonitoringHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 		if err != nil {
 			log.Errorf("GetResourcesUtilization: exec command: %s", err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": err.Error(),
+				"message": "Server error",
 			})
 		}
 		output2 := string(out2[:])
@@ -60,7 +60,7 @@ func (ih MonitoringHandler) GetResourcesUtilization(c *fiber.Ctx) error {
 			if err != nil {
 				log.Errorf("GetResourcesUtilization: memoryUsage: %s", err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"message": err.Error(),
+					"message": "Server error",
 				})
 			}
 		}

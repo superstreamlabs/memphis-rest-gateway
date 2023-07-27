@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/models"
 	"rest-gateway/utils"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,23 +17,24 @@ import (
 )
 
 var configuration = conf.GetConfig()
+var lock sync.Mutex
 
 type AuthHandler struct{}
 
 type Connection struct {
-	Connection *memphis.Conn `json:"connection"`
-	ExpireDate float64       `json:"expire_date"`
+	Connection     *memphis.Conn `json:"connection"`
+	ExpirationTime int64         `json:"expiration_date"`
 }
 
 var connectionsCache = map[string]map[string]Connection{}
 
 func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	var err error
-	if accountId == 0 && configuration.USER_PASS_BASED_AUTH {
-		accountId = 1
-	}
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
 	if configuration.USER_PASS_BASED_AUTH {
+		if accountId == 0 {
+			accountId = 1
+		}
 		opts = append(opts, memphis.Password(password), memphis.AccountId(accountId))
 	} else {
 		opts = append(opts, memphis.ConnectionToken(connectionToken))
@@ -52,7 +55,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": err.Error(),
+			"message": "Server error",
 		})
 	}
 
@@ -62,12 +65,12 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	conn, err := connect(body.Password, body.Username, body.ConnectionToken, body.AccountId)
+	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
 			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
-				"message": "Wrong credentials",
+				"message": "Unauthorized",
 			})
 		}
 
@@ -77,30 +80,27 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, body.Username, body.AccountId, body.Password, body.ConnectionToken)
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, body.Username, int(body.AccountId), body.Password, body.ConnectionToken)
 	if err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Create tokens error",
-		})
-	}
-	claims, err := getDetailsFromToken(token, configuration.JWT_SECRET)
-	if err != nil {
-		log.Errorf("Authenticate: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Get details tokens error",
+			"message": "Server error",
 		})
 	}
 
-	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
-	username := claims["username"].(string)
-	tokenExpire := claims["exp"].(float64)
-
-	if connectionsCache[tenantName] == nil {
-		connectionsCache[tenantName] = make(map[string]Connection)
+	tokenExpiration := time.Now().Add(time.Minute * time.Duration(body.TokenExpiryMins)).Unix()
+	username := strings.ToLower(body.Username)
+	accountId := strconv.Itoa(int(body.AccountId))
+	if connectionsCache[accountId] == nil {
+		lock.Lock()
+		connectionsCache[accountId] = make(map[string]Connection)
+		lock.Unlock()
 	}
 
-	connectionsCache[tenantName][username] = Connection{Connection: conn, ExpireDate: tokenExpire}
+	lock.Lock()
+	connectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiration}
+	lock.Unlock()
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -119,21 +119,22 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	}
 
 	atClaims := jwt.MapClaims{}
-	atClaims["username"] = username
-	if accountId == 0 || !configuration.USER_PASS_BASED_AUTH {
-		accountId = 1
+	if configuration.USER_PASS_BASED_AUTH {
+		if accountId == 0 {
+			accountId = 1
+		}
 	}
+	atClaims["username"] = username
+	atClaims["password"] = password
 	atClaims["account_id"] = accountId
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
+	atClaims["connection_token"] = connectionToken
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(configuration.JWT_SECRET))
 	if err != nil {
 		return "", "", 0, 0, err
 	}
 
-	atClaims["password"] = password
-	atClaims["connection_token"] = connectionToken
-	atClaims["token_exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	refreshToken, err := at.SignedString([]byte(configuration.REFRESH_JWT_SECRET))
@@ -149,7 +150,7 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": err.Error(),
+			"message": "Server error",
 		})
 	}
 	if err := utils.Validate(body); err != nil {
@@ -157,33 +158,27 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 			"message": err,
 		})
 	}
-	claims, err := getDetailsFromToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
-	if err != nil {
-		log.Errorf("RefreshToken: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Get details tokens error",
+	userData, ok := c.Locals("userData").(models.AuthSchema)
+	if !ok {
+		log.Errorf("CreateHandleMessage - handleHeaders:  failed get the user data from middleare")
+		c.Status(500)
+		return c.JSON(&fiber.Map{
+			"success": false,
+			"error":   "Server error",
 		})
 	}
 
-	tenantName := strconv.Itoa(int(claims["account_id"].(float64)))
-	username := claims["username"].(string)
-	password := claims["password"].(string)
-	connectionToken := claims["connection_token"].(string)
+	username := userData.Username
+	accountId := int(userData.AccountId)
+	password := userData.Password
+	connectionToken := userData.ConnectionToken
 
-	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, username, int(claims["account_id"].(float64)), password, connectionToken)
-	if err != nil {
-		log.Errorf("RefreshToken: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Create tokens error",
-		})
-	}
-
-	conn, err := connect(password, username, connectionToken, int(claims["account_id"].(float64)))
+	conn, err := connect(password, username, connectionToken, accountId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
 			log.Warnf("RefreshToken: Authentication error")
 			return c.Status(401).JSON(fiber.Map{
-				"message": "Wrong credentials",
+				"message": "Unauthorized",
 			})
 		}
 
@@ -193,21 +188,25 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
-	claims, err = getDetailsFromToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, username, accountId, password, connectionToken)
 	if err != nil {
 		log.Errorf("RefreshToken: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Get details tokens error",
+			"message": "Server error",
 		})
 	}
-	tokenExpire := claims["token_exp"].(float64)
+	tokenExpiration := time.Now().Add(time.Minute * time.Duration(body.TokenExpiryMins)).Unix()
 
-	if connectionsCache[tenantName] == nil {
-		connectionsCache[tenantName] = make(map[string]Connection)
+	accountId = int(accountId)
+	if connectionsCache[strconv.Itoa(int(accountId))] == nil {
+		lock.Lock()
+		connectionsCache[strconv.Itoa(accountId)] = make(map[string]Connection)
+		lock.Unlock()
 	}
 
-	connectionsCache[tenantName][username] = Connection{Connection: conn, ExpireDate: tokenExpire}
-
+	lock.Lock()
+	connectionsCache[strconv.Itoa(accountId)][username] = Connection{Connection: conn, ExpirationTime: tokenExpiration}
+	lock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -223,14 +222,18 @@ func CleanConnectionsCache() {
 				currentTime := time.Now()
 				unixTimeNow := currentTime.Unix()
 				conn := connectionsCache[t][u].Connection
-
-				if unixTimeNow > int64(user.ExpireDate) {
+				if unixTimeNow > int64(user.ExpirationTime) {
 					conn.Close()
+					lock.Lock()
 					delete(connectionsCache[t], u)
+					lock.Unlock()
+					fmt.Println("delete from cahe")
 				}
 			}
 			if len(connectionsCache[t]) == 0 {
+				lock.Lock()
 				delete(connectionsCache, t)
+				lock.Unlock()
 			}
 		}
 	}
