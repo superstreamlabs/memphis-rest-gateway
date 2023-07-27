@@ -21,7 +21,6 @@ type Configuration struct {
 	USER_PASS_BASED_AUTH           bool
 	ROOT_PASSWORD                  string
 	DEBUG                          bool
-	ACCOUNT_ID                     string
 	CLOUD_ENV                      string
 }
 
