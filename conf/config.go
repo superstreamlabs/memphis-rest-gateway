@@ -28,5 +28,6 @@ func GetConfig() Configuration {
 	configuration := Configuration{}
 	gonfig.GetConf("./conf/config.json", &configuration)
 
+	configuration.USER_PASS_BASED_AUTH = true
 	return configuration
 }
