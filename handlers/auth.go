@@ -32,9 +32,6 @@ func connect(password, username, connectionToken string, accountId int) (*memphi
 	var err error
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
 	if configuration.USER_PASS_BASED_AUTH {
-		if accountId == 0 {
-			accountId = 1
-		}
 		opts = append(opts, memphis.Password(password), memphis.AccountId(accountId))
 	} else {
 		opts = append(opts, memphis.ConnectionToken(connectionToken))
@@ -62,6 +59,12 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{
 			"message": err,
 		})
+	}
+
+	if configuration.USER_PASS_BASED_AUTH {
+		if body.AccountId == 0 {
+			body.AccountId = 1
+		}
 	}
 
 	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
@@ -123,11 +126,6 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	}
 
 	atClaims := jwt.MapClaims{}
-	if configuration.USER_PASS_BASED_AUTH {
-		if accountId == 0 {
-			accountId = 1
-		}
-	}
 	atClaims["username"] = username
 	atClaims["password"] = password
 	atClaims["account_id"] = accountId
@@ -177,6 +175,12 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	accountId := int(userData.AccountId)
 	password := userData.Password
 	connectionToken := userData.ConnectionToken
+
+	if configuration.USER_PASS_BASED_AUTH {
+		if accountId == 0 {
+			accountId = 1
+		}
+	}
 
 	conn, err := connect(password, username, connectionToken, accountId)
 	if err != nil {
