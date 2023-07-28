@@ -40,5 +40,4 @@ func main() {
 	l.Noticef("Memphis REST gateway is up and running")
 	l.Noticef("Version %s", configuration.VERSION)
 	app.Listen(":" + configuration.HTTP_PORT)
-
 }

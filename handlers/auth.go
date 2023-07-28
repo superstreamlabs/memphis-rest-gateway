@@ -105,7 +105,6 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	lock.Lock()
 	connectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiration}
 	lock.Unlock()
-
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,

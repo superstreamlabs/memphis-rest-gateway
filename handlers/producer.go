@@ -78,7 +78,6 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 					"error":   "Server error",
 				})
 			}
-
 			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
 				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
