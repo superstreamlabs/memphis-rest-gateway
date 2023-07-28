@@ -66,7 +66,6 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 		user = models.AuthSchema{
 			Username:        claims["username"].(string),
 			ConnectionToken: claims["connection_token"].(string),
-			AccountId:       claims["account_id"].(float64),
 		}
 	} else {
 		user = models.AuthSchema{
@@ -75,7 +74,6 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 			AccountId: claims["account_id"].(float64),
 		}
 	}
-
 	return user, nil
 }
 
