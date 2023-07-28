@@ -56,8 +56,8 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			}
 			userData, ok := c.Locals("userData").(models.AuthSchema)
 			if !ok {
-				log.Errorf("CreateHandleMessage - userData: failed get user details from middleware")
-				c.Status(500)
+				log.Errorf("CreateHandleMessage: failed to get the user data from the middleware")
+				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   "Server error",
@@ -82,7 +82,7 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
 				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
-				c.Status(500)
+				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   err.Error(),
@@ -128,7 +128,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 
 			userData, ok := c.Locals("userData").(models.AuthSchema)
 			if !ok {
-				log.Errorf("CreateHandleBatch - userData: failed get user details from middleware")
+				log.Errorf("CreateHandleBatch: failed to get the user data from the middleware")
 				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
@@ -144,7 +144,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 				errMsg := fmt.Sprintf("Connection does not exists")
 				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
 
-				c.Status(500)
+				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   "Server error",

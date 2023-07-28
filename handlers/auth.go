@@ -166,8 +166,8 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	}
 	userData, ok := c.Locals("userData").(models.AuthSchema)
 	if !ok {
-		log.Errorf("CreateHandleMessage - handleHeaders:  failed get the user data from middleare")
-		c.Status(500)
+		log.Errorf("RefreshToken: failed to get the user data from the middleware")
+		c.Status(fiber.StatusInternalServerError)
 		return c.JSON(&fiber.Map{
 			"success": false,
 			"error":   "Server error",
