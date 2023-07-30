@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/models"
@@ -17,7 +16,7 @@ import (
 )
 
 var configuration = conf.GetConfig()
-var lock sync.Mutex
+var connectionsCacheLock sync.Mutex
 
 type AuthHandler struct{}
 
@@ -26,9 +25,19 @@ type Connection struct {
 	ExpirationTime float64       `json:"expiration_time"`
 }
 
+type refreshTokenExpiration struct {
+	TokenExpiration        float64 `json:"token_expiration"`
+	RefreshTokenExpiration float64 `json:"refresh_token_expiration"`
+}
+
 var connectionsCache = map[string]map[string]Connection{}
 
 func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
+	if configuration.USER_PASS_BASED_AUTH {
+		if accountId == 0 {
+			accountId = 1
+		}
+	}
 	var err error
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
 	if configuration.USER_PASS_BASED_AUTH {
@@ -61,12 +70,6 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	if configuration.USER_PASS_BASED_AUTH {
-		if body.AccountId == 0 {
-			body.AccountId = 1
-		}
-	}
-
 	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
@@ -89,25 +92,17 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	claims, err := ExtractUserDetailsFromToken(token, conf.GetConfig().JWT_SECRET)
-	if err != nil {
-		log.Errorf("Authenticate: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Server error",
-		})
-	}
-	tokenExpiration := claims["exp"].(float64)
 	username := strings.ToLower(body.Username)
 	accountId := strconv.Itoa(int(body.AccountId))
 	if connectionsCache[accountId] == nil {
-		lock.Lock()
+		connectionsCacheLock.Lock()
 		connectionsCache[accountId] = make(map[string]Connection)
-		lock.Unlock()
+		connectionsCacheLock.Unlock()
 	}
 
-	lock.Lock()
-	connectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiration}
-	lock.Unlock()
+	connectionsCacheLock.Lock()
+	connectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
+	connectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -116,7 +111,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	})
 }
 
-func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, accountId int, password, connectionToken string) (string, string, int, int, error) {
+func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, accountId int, password, connectionToken string) (string, string, float64, float64, error) {
 	if tokenExpiryMins <= 0 {
 		tokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
 	}
@@ -144,7 +139,13 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	if err != nil {
 		return "", "", 0, 0, err
 	}
-	return token, refreshToken, tokenExpiryMins, refreshTokenExpiryMins, nil
+	tokenExpiry := atClaims["exp"].(float64)
+	refreshTokenExpiry := refreshTokenExpiration{
+		RefreshTokenExpiration: atClaims["exp"].(float64),
+		TokenExpiration:        atClaims["token_exp"].(float64),
+	}
+
+	return token, refreshToken, tokenExpiry, refreshTokenExpiry.TokenExpiration, nil
 }
 
 func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
@@ -176,12 +177,6 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	password := userData.Password
 	connectionToken := userData.ConnectionToken
 
-	if configuration.USER_PASS_BASED_AUTH {
-		if accountId == 0 {
-			accountId = 1
-		}
-	}
-
 	conn, err := connect(password, username, connectionToken, accountId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
@@ -205,24 +200,16 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
-	claims, err := ExtractUserDetailsFromToken(refreshToken, conf.GetConfig().REFRESH_JWT_SECRET)
-	if err != nil {
-		log.Errorf("RefreshToken: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Server error",
-		})
-	}
-	tokenExpiration := claims["token_exp"].(float64)
 	accountId = int(accountId)
 	if connectionsCache[strconv.Itoa(int(accountId))] == nil {
-		lock.Lock()
+		connectionsCacheLock.Lock()
 		connectionsCache[strconv.Itoa(accountId)] = make(map[string]Connection)
-		lock.Unlock()
+		connectionsCacheLock.Unlock()
 	}
 
-	lock.Lock()
-	connectionsCache[strconv.Itoa(accountId)][username] = Connection{Connection: conn, ExpirationTime: tokenExpiration}
-	lock.Unlock()
+	connectionsCacheLock.Lock()
+	connectionsCache[strconv.Itoa(accountId)][username] = Connection{Connection: conn, ExpirationTime: refreshTokenExpiry}
+	connectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -240,30 +227,16 @@ func CleanConnectionsCache() {
 				conn := connectionsCache[t][u].Connection
 				if unixTimeNow > int64(user.ExpirationTime) {
 					conn.Close()
-					lock.Lock()
+					connectionsCacheLock.Lock()
 					delete(connectionsCache[t], u)
-					lock.Unlock()
+					connectionsCacheLock.Unlock()
 				}
 			}
 			if len(connectionsCache[t]) == 0 {
-				lock.Lock()
+				connectionsCacheLock.Lock()
 				delete(connectionsCache, t)
-				lock.Unlock()
+				connectionsCacheLock.Unlock()
 			}
 		}
 	}
-}
-
-func ExtractUserDetailsFromToken(token, secret string) (jwt.MapClaims, error) {
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
-	if err != nil {
-		return jwt.MapClaims{}, err
-	}
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return jwt.MapClaims{}, fmt.Errorf("ExtractUserDetailsFromToken: Claims are not of the expected type")
-	}
-	return claims, nil
 }
