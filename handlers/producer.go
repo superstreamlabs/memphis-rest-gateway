@@ -30,7 +30,11 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 func CreateHandleMessage() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
-		stationName := c.Params("stationName")
+		// We do this parse to params instead of use fiber because there is a memory leak error in fiber
+		// stationName := c.Params("stationName")
+		url := c.Request().URI().String()
+		urlParts := strings.Split(url, "/")
+		stationName := urlParts[4]
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
@@ -63,7 +67,6 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 					"error":   "Server error",
 				})
 			}
-
 			username := userData.Username
 			accountId := userData.AccountId
 			accountIdStr := strconv.Itoa(int(accountId))
@@ -102,7 +105,11 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 func CreateHandleBatch() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
-		stationName := c.Params("stationName")
+		// We do this parse to params instead of use fiber because there is a memory leak error in fiber
+		// stationName := c.Params("stationName")
+		url := c.Request().URI().String()
+		urlParts := strings.Split(url, "/")
+		stationName := urlParts[4]
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
