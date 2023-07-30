@@ -22,12 +22,12 @@ type AuthHandler struct{}
 
 type Connection struct {
 	Connection     *memphis.Conn `json:"connection"`
-	ExpirationTime float64       `json:"expiration_time"`
+	ExpirationTime int64         `json:"expiration_time"`
 }
 
 type refreshTokenExpiration struct {
-	TokenExpiration        float64 `json:"token_expiration"`
-	RefreshTokenExpiration float64 `json:"refresh_token_expiration"`
+	TokenExpiration        int64 `json:"token_expiration"`
+	RefreshTokenExpiration int64 `json:"refresh_token_expiration"`
 }
 
 var connectionsCache = map[string]map[string]Connection{}
@@ -111,7 +111,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	})
 }
 
-func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, accountId int, password, connectionToken string) (string, string, float64, float64, error) {
+func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, accountId int, password, connectionToken string) (string, string, int64, int64, error) {
 	if tokenExpiryMins <= 0 {
 		tokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
 	}
@@ -139,10 +139,10 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	if err != nil {
 		return "", "", 0, 0, err
 	}
-	tokenExpiry := atClaims["exp"].(float64)
+	tokenExpiry := atClaims["exp"].(int64)
 	refreshTokenExpiry := refreshTokenExpiration{
-		RefreshTokenExpiration: atClaims["exp"].(float64),
-		TokenExpiration:        atClaims["token_exp"].(float64),
+		RefreshTokenExpiration: atClaims["exp"].(int64),
+		TokenExpiration:        atClaims["token_exp"].(int64),
 	}
 
 	return token, refreshToken, tokenExpiry, refreshTokenExpiry.TokenExpiration, nil
