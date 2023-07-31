@@ -66,6 +66,7 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 		user = models.AuthSchema{
 			Username:        claims["username"].(string),
 			ConnectionToken: claims["connection_token"].(string),
+			AccountId:       1,
 		}
 	} else {
 		user = models.AuthSchema{
@@ -139,6 +140,8 @@ func Authenticate(c *fiber.Ctx) error {
 				"message": "Unauthorized",
 			})
 		}
+	} else if !configuration.USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
+		user.AccountId = 1
 	}
 
 	c.Locals("userData", user)
