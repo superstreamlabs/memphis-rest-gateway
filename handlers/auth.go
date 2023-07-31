@@ -84,7 +84,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": "Server error",
 		})
 	}
-	if !configuration.USER_PASS_BASED_AUTH {
+	if body.AccountId == 0 {
 		body.AccountId = 1
 	}
 	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, body.Username, int(body.AccountId), body.Password, body.ConnectionToken)
