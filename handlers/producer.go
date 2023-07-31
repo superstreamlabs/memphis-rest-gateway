@@ -3,7 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
+
 	"rest-gateway/logger"
+	"rest-gateway/models"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,10 +27,14 @@ func handleHeaders(headers map[string]string) (memphis.Headers, error) {
 	return hdrs, nil
 }
 
-func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
+func CreateHandleMessage() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
-		stationName := c.Params("stationName")
+		// We do this parse to params instead of use fiber because there is a memory leak error in fiber
+		// stationName := c.Params("stationName")
+		url := c.Request().URI().String()
+		urlParts := strings.Split(url, "/")
+		stationName := urlParts[4]
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
@@ -44,12 +52,39 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				log.Errorf("CreateHandleMessage - handleHeaders: %s", err.Error())
-				return err
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
 			}
-			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
+			userData, ok := c.Locals("userData").(models.AuthSchema)
+			if !ok {
+				log.Errorf("CreateHandleMessage: failed to get the user data from the middleware")
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
+			}
+			username := userData.Username
+			accountId := userData.AccountId
+			accountIdStr := strconv.Itoa(int(accountId))
+			conn := connectionsCache[accountIdStr][username].Connection
+			if conn == nil {
+				errMsg := fmt.Sprintf("Connection does not exist")
+				log.Errorf("CreateHandleMessage - produce: %s", errMsg)
+
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
+			}
+			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
 				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
-				c.Status(500)
+				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   err.Error(),
@@ -67,10 +102,14 @@ func CreateHandleMessage(conn *memphis.Conn) func(*fiber.Ctx) error {
 	}
 }
 
-func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
+func CreateHandleBatch() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		log := logger.GetLogger(c)
-		stationName := c.Params("stationName")
+		// We do this parse to params instead of use fiber because there is a memory leak error in fiber
+		// stationName := c.Params("stationName")
+		url := c.Request().URI().String()
+		urlParts := strings.Split(url, "/")
+		stationName := urlParts[4]
 		bodyReq := c.Body()
 		headers := c.GetReqHeaders()
 		contentType := string(c.Request().Header.ContentType())
@@ -86,7 +125,36 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 			hdrs, err := handleHeaders(headers)
 			if err != nil {
 				log.Errorf("CreateHandleBatch - handleHeaders: %s", err.Error())
-				return err
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
+			}
+
+			userData, ok := c.Locals("userData").(models.AuthSchema)
+			if !ok {
+				log.Errorf("CreateHandleBatch: failed to get the user data from the middleware")
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
+			}
+
+			username := userData.Username
+			accountId := userData.AccountId
+			accountIdStr := strconv.Itoa(int(accountId))
+			conn := connectionsCache[accountIdStr][username].Connection
+			if conn == nil {
+				errMsg := fmt.Sprintf("Connection does not exist")
+				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
+
+				c.Status(fiber.StatusInternalServerError)
+				return c.JSON(&fiber.Map{
+					"success": false,
+					"error":   "Server error",
+				})
 			}
 
 			errCount := 0
@@ -98,7 +166,7 @@ func CreateHandleBatch(conn *memphis.Conn) func(*fiber.Ctx) error {
 					allErr = append(allErr, err.Error())
 					continue
 				}
-				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{memphis.ProducerGenUniqueSuffix()}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
+				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
 					log.Errorf("CreateHandleBatch - produce: %s", err.Error())
 					errCount++
 					allErr = append(allErr, err.Error())
