@@ -72,7 +72,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
 	if err != nil {
-		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
+		if strings.Contains(err.Error(), "memphis: Wrong / missing account ID") || strings.Contains(err.Error(), "token") {
 			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Unauthorized",
