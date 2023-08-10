@@ -18,6 +18,11 @@ import (
 var configuration = conf.GetConfig()
 var connectionsCacheLock sync.Mutex
 
+const (
+	errorMsgAuthorizationViolation = "authorization violation"
+	errorMsgMissionAccountId       = "account id"
+)
+
 type AuthHandler struct{}
 
 type Connection struct {
@@ -72,7 +77,8 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
 	if err != nil {
-		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, errorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, errorMsgMissionAccountId) {
 			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Unauthorized",
@@ -182,7 +188,8 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 	conn, err := connect(password, username, connectionToken, accountId)
 	if err != nil {
-		if strings.Contains(err.Error(), "Authorization Violation") || strings.Contains(err.Error(), "token") {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, errorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, errorMsgMissionAccountId) {
 			log.Warnf("RefreshToken: Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Unauthorized",
