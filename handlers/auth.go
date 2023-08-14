@@ -19,8 +19,8 @@ var configuration = conf.GetConfig()
 var ConnectionsCacheLock sync.Mutex
 
 const (
-	errorMsgAuthorizationViolation = "authorization violation"
-	errorMsgMissionAccountId       = "account id"
+	ErrorMsgAuthorizationViolation = "authorization violation"
+	ErrorMsgMissionAccountId       = "account id"
 )
 
 type AuthHandler struct{}
@@ -37,7 +37,7 @@ type refreshTokenExpiration struct {
 
 var ConnectionsCache = map[string]map[string]Connection{}
 
-func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
+func Connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	if configuration.USER_PASS_BASED_AUTH {
 		if accountId == 0 {
 			accountId = 1
@@ -75,10 +75,10 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	conn, err := connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
+	conn, err := Connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
 	if err != nil {
 		errMsg := strings.ToLower(err.Error())
-		if strings.Contains(errMsg, errorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, errorMsgMissionAccountId) {
+		if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
 			log.Warnf("Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Unauthorized",
@@ -186,10 +186,10 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	password := userData.Password
 	connectionToken := userData.ConnectionToken
 
-	conn, err := connect(password, username, connectionToken, accountId)
+	conn, err := Connect(password, username, connectionToken, accountId)
 	if err != nil {
 		errMsg := strings.ToLower(err.Error())
-		if strings.Contains(errMsg, errorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, errorMsgMissionAccountId) {
+		if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
 			log.Warnf("RefreshToken: Authentication error")
 			return c.Status(401).JSON(fiber.Map{
 				"message": "Unauthorized",

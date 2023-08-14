@@ -8,11 +8,9 @@ import (
 	"rest-gateway/logger"
 	"rest-gateway/models"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/memphisdev/memphis.go"
 )
 
 var configuration = conf.GetConfig()
@@ -121,17 +119,17 @@ func Authenticate(c *fiber.Ctx) error {
 		// for backward compatability
 		if strings.HasSuffix(path, "/produce/single") || strings.HasSuffix(path, "/produce/batch") {
 			if user.Username == "" {
-				opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
-				if configuration.USER_PASS_BASED_AUTH {
-					opts = append(opts, memphis.Password(configuration.ROOT_PASSWORD))
-				} else {
-					opts = append(opts, memphis.ConnectionToken(configuration.CONNECTION_TOKEN))
+				accountId := 1
+				conn, err := handlers.Connect(configuration.ROOT_PASSWORD, configuration.ROOT_USER, configuration.CONNECTION_TOKEN, accountId)
+				if err != nil {
+					errMsg := strings.ToLower(err.Error())
+					if strings.Contains(errMsg, handlers.ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, handlers.ErrorMsgMissionAccountId) {
+						log.Warnf("Authentication error")
+						return c.Status(401).JSON(fiber.Map{
+							"message": "Unauthorized",
+						})
+					}
 				}
-				if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-					opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
-				}
-				conn, _ := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, opts...)
-
 				if handlers.ConnectionsCache["1"] == nil {
 					handlers.ConnectionsCacheLock.Lock()
 					handlers.ConnectionsCache["1"] = make(map[string]handlers.Connection)
