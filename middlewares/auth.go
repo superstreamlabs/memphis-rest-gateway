@@ -78,11 +78,11 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 			}
 		}
 	} else {
+		// for backward compatability
 		user = models.AuthSchema{
 			TokenExpiryMins: int(claims["exp"].(float64)),
 		}
 	}
-
 	return user, nil
 }
 
@@ -116,7 +116,6 @@ func Authenticate(c *fiber.Ctx) error {
 				"message": "Unauthorized",
 			})
 		}
-
 	} else if path == "/auth/refreshtoken" {
 		var body models.RefreshTokenSchema
 		if err := c.BodyParser(&body); err != nil {
