@@ -101,6 +101,7 @@ curl --location --request POST 'rest_gateway:4444/auth/authenticate' \
     "username": "root",
     "connection_token": "memphis",
     "password": "memphis, // connect with only one of the following methods: connection token / password
+    "account_id": 123456789, // needed when working with Memphis cloud
     "token_expiry_in_minutes": 60,
     "refresh_token_expiry_in_minutes": 10000092
 }'
