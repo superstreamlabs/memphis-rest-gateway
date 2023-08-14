@@ -120,8 +120,7 @@ func Authenticate(c *fiber.Ctx) error {
 		}
 		// for backward compatability
 		if strings.HasSuffix(path, "/produce/single") || strings.HasSuffix(path, "/produce/batch") {
-			emptyAuthSchema := models.AuthSchema{}
-			if user == emptyAuthSchema {
+			if user.Username == "" {
 				opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
 				if configuration.USER_PASS_BASED_AUTH {
 					opts = append(opts, memphis.Password(configuration.ROOT_PASSWORD))
