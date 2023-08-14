@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"rest-gateway/conf"
+	"rest-gateway/handlers"
 	"rest-gateway/logger"
 	"rest-gateway/models"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/memphisdev/memphis.go"
 )
 
 var configuration = conf.GetConfig()
@@ -62,19 +65,26 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 	}
 
 	var user models.AuthSchema
-	if !configuration.USER_PASS_BASED_AUTH {
-		user = models.AuthSchema{
-			Username:        claims["username"].(string),
-			ConnectionToken: claims["connection_token"].(string),
-			AccountId:       1,
+	if _, ok := claims["username"].(string); ok {
+		if !configuration.USER_PASS_BASED_AUTH {
+			user = models.AuthSchema{
+				Username:        claims["username"].(string),
+				ConnectionToken: claims["connection_token"].(string),
+				AccountId:       1,
+			}
+		} else {
+			user = models.AuthSchema{
+				Username:  claims["username"].(string),
+				Password:  claims["password"].(string),
+				AccountId: claims["account_id"].(float64),
+			}
 		}
 	} else {
 		user = models.AuthSchema{
-			Username:  claims["username"].(string),
-			Password:  claims["password"].(string),
-			AccountId: claims["account_id"].(float64),
+			TokenExpiryMins: int(claims["exp"].(float64)),
 		}
 	}
+
 	return user, nil
 }
 
@@ -142,6 +152,42 @@ func Authenticate(c *fiber.Ctx) error {
 		}
 	} else if !configuration.USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
 		user.AccountId = 1
+	}
+
+	// for backward compatability
+	if user.Username == "" {
+		opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
+		if configuration.USER_PASS_BASED_AUTH {
+			opts = append(opts, memphis.Password(configuration.ROOT_PASSWORD))
+		} else {
+			opts = append(opts, memphis.ConnectionToken(configuration.CONNECTION_TOKEN))
+		}
+		if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+			opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
+		}
+		conn, _ := memphis.Connect(configuration.MEMPHIS_HOST, configuration.ROOT_USER, opts...)
+
+		if handlers.ConnectionsCache["1"] == nil {
+			handlers.ConnectionsCacheLock.Lock()
+			handlers.ConnectionsCache["1"] = make(map[string]handlers.Connection)
+			handlers.ConnectionsCacheLock.Unlock()
+		}
+
+		handlers.ConnectionsCache["1"][configuration.ROOT_USER] = handlers.Connection{Connection: conn, ExpirationTime: int64(user.TokenExpiryMins)}
+
+		if !configuration.USER_PASS_BASED_AUTH {
+			user = models.AuthSchema{
+				Username:        configuration.ROOT_USER,
+				ConnectionToken: configuration.CONNECTION_TOKEN,
+				AccountId:       1,
+			}
+		} else {
+			user = models.AuthSchema{
+				Username:  configuration.ROOT_USER,
+				Password:  configuration.ROOT_PASSWORD,
+				AccountId: 1,
+			}
+		}
 	}
 
 	c.Locals("userData", user)

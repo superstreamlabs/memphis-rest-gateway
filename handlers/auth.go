@@ -16,7 +16,7 @@ import (
 )
 
 var configuration = conf.GetConfig()
-var connectionsCacheLock sync.Mutex
+var ConnectionsCacheLock sync.Mutex
 
 const (
 	errorMsgAuthorizationViolation = "authorization violation"
@@ -35,7 +35,7 @@ type refreshTokenExpiration struct {
 	RefreshTokenExpiration int64 `json:"refresh_token_expiration"`
 }
 
-var connectionsCache = map[string]map[string]Connection{}
+var ConnectionsCache = map[string]map[string]Connection{}
 
 func connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	if configuration.USER_PASS_BASED_AUTH {
@@ -103,15 +103,15 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 	username := strings.ToLower(body.Username)
 	accountId := strconv.Itoa(int(body.AccountId))
-	if connectionsCache[accountId] == nil {
-		connectionsCacheLock.Lock()
-		connectionsCache[accountId] = make(map[string]Connection)
-		connectionsCacheLock.Unlock()
+	if ConnectionsCache[accountId] == nil {
+		ConnectionsCacheLock.Lock()
+		ConnectionsCache[accountId] = make(map[string]Connection)
+		ConnectionsCacheLock.Unlock()
 	}
 
-	connectionsCacheLock.Lock()
-	connectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
-	connectionsCacheLock.Unlock()
+	ConnectionsCacheLock.Lock()
+	ConnectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
+	ConnectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -211,15 +211,15 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	}
 
 	accountId = int(accountId)
-	if connectionsCache[strconv.Itoa(int(accountId))] == nil {
-		connectionsCacheLock.Lock()
-		connectionsCache[strconv.Itoa(accountId)] = make(map[string]Connection)
-		connectionsCacheLock.Unlock()
+	if ConnectionsCache[strconv.Itoa(int(accountId))] == nil {
+		ConnectionsCacheLock.Lock()
+		ConnectionsCache[strconv.Itoa(accountId)] = make(map[string]Connection)
+		ConnectionsCacheLock.Unlock()
 	}
 
-	connectionsCacheLock.Lock()
-	connectionsCache[strconv.Itoa(accountId)][username] = Connection{Connection: conn, ExpirationTime: refreshTokenExpiry}
-	connectionsCacheLock.Unlock()
+	ConnectionsCacheLock.Lock()
+	ConnectionsCache[strconv.Itoa(accountId)][username] = Connection{Connection: conn, ExpirationTime: refreshTokenExpiry}
+	ConnectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -230,22 +230,22 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 func CleanConnectionsCache() {
 	for range time.Tick(time.Second * 30) {
-		for t, tenant := range connectionsCache {
+		for t, tenant := range ConnectionsCache {
 			for u, user := range tenant {
 				currentTime := time.Now()
 				unixTimeNow := currentTime.Unix()
-				conn := connectionsCache[t][u].Connection
+				conn := ConnectionsCache[t][u].Connection
 				if unixTimeNow > int64(user.ExpirationTime) {
 					conn.Close()
-					connectionsCacheLock.Lock()
-					delete(connectionsCache[t], u)
-					connectionsCacheLock.Unlock()
+					ConnectionsCacheLock.Lock()
+					delete(ConnectionsCache[t], u)
+					ConnectionsCacheLock.Unlock()
 				}
 			}
-			if len(connectionsCache[t]) == 0 {
-				connectionsCacheLock.Lock()
-				delete(connectionsCache, t)
-				connectionsCacheLock.Unlock()
+			if len(ConnectionsCache[t]) == 0 {
+				ConnectionsCacheLock.Lock()
+				delete(ConnectionsCache, t)
+				ConnectionsCacheLock.Unlock()
 			}
 		}
 	}
