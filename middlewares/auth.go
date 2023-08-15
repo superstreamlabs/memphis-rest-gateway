@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"rest-gateway/conf"
+	"rest-gateway/handlers"
 	"rest-gateway/logger"
 	"rest-gateway/models"
 	"strings"
@@ -62,17 +63,24 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 	}
 
 	var user models.AuthSchema
-	if !configuration.USER_PASS_BASED_AUTH {
-		user = models.AuthSchema{
-			Username:        claims["username"].(string),
-			ConnectionToken: claims["connection_token"].(string),
-			AccountId:       1,
+	if _, ok := claims["username"].(string); ok {
+		if !configuration.USER_PASS_BASED_AUTH {
+			user = models.AuthSchema{
+				Username:        claims["username"].(string),
+				ConnectionToken: claims["connection_token"].(string),
+				AccountId:       1,
+			}
+		} else {
+			user = models.AuthSchema{
+				Username:  claims["username"].(string),
+				Password:  claims["password"].(string),
+				AccountId: claims["account_id"].(float64),
+			}
 		}
 	} else {
+		// for backward compatability
 		user = models.AuthSchema{
-			Username:  claims["username"].(string),
-			Password:  claims["password"].(string),
-			AccountId: claims["account_id"].(float64),
+			TokenExpiryMins: int(claims["exp"].(float64)),
 		}
 	}
 	return user, nil
@@ -142,6 +150,44 @@ func Authenticate(c *fiber.Ctx) error {
 		}
 	} else if !configuration.USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
 		user.AccountId = 1
+	}
+
+	// for backward compatability
+	if strings.HasSuffix(path, "/produce/single") || strings.HasSuffix(path, "/produce/batch") || path == "/auth/refreshtoken" {
+		if user.Username == "" {
+			accountId := 1
+			conn, err := handlers.Connect(configuration.ROOT_PASSWORD, configuration.ROOT_USER, configuration.CONNECTION_TOKEN, accountId)
+			if err != nil {
+				errMsg := strings.ToLower(err.Error())
+				if strings.Contains(errMsg, handlers.ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, handlers.ErrorMsgMissionAccountId) {
+					log.Warnf("Authentication error")
+					return c.Status(401).JSON(fiber.Map{
+						"message": "Unauthorized",
+					})
+				}
+			}
+			if handlers.ConnectionsCache["1"] == nil {
+				handlers.ConnectionsCacheLock.Lock()
+				handlers.ConnectionsCache["1"] = make(map[string]handlers.Connection)
+				handlers.ConnectionsCacheLock.Unlock()
+			}
+
+			handlers.ConnectionsCache["1"][configuration.ROOT_USER] = handlers.Connection{Connection: conn, ExpirationTime: int64(user.TokenExpiryMins)}
+
+			if !configuration.USER_PASS_BASED_AUTH {
+				user = models.AuthSchema{
+					Username:        configuration.ROOT_USER,
+					ConnectionToken: configuration.CONNECTION_TOKEN,
+					AccountId:       1,
+				}
+			} else {
+				user = models.AuthSchema{
+					Username:  configuration.ROOT_USER,
+					Password:  configuration.ROOT_PASSWORD,
+					AccountId: 1,
+				}
+			}
+		}
 	}
 
 	c.Locals("userData", user)
