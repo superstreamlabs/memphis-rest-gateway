@@ -70,7 +70,7 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			username := userData.Username
 			accountId := userData.AccountId
 			accountIdStr := strconv.Itoa(int(accountId))
-			conn := connectionsCache[accountIdStr][username].Connection
+			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exist")
 				log.Errorf("CreateHandleMessage - produce: %s", errMsg)
@@ -145,7 +145,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 			username := userData.Username
 			accountId := userData.AccountId
 			accountIdStr := strconv.Itoa(int(accountId))
-			conn := connectionsCache[accountIdStr][username].Connection
+			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
 				errMsg := fmt.Sprintf("Connection does not exist")
 				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
