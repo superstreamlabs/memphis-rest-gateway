@@ -22,6 +22,14 @@ type Configuration struct {
 	ROOT_PASSWORD                  string
 	DEBUG                          bool
 	CLOUD_ENV                      bool
+	USE_DB_CACHE                   bool
+	DB_HOST                        string
+	DB_USER                        string
+	DB_PASSWORD                    string
+	DB_NAME                        string
+	DB_PORT                        string
+	DB_SSLMODE                     bool
+	DB_TIME_ZONE                   string
 }
 
 func GetConfig() Configuration {
