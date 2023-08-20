@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func initalizeLogger() *logger.Logger {
+func initializeLogger() *logger.Logger {
 	configuration := conf.GetConfig()
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -18,7 +18,7 @@ func initalizeLogger() *logger.Logger {
 			creds := configuration.CONNECTION_TOKEN
 			username := configuration.ROOT_USER
 			if configuration.USER_PASS_BASED_AUTH {
-				username = "$memphis"
+				username = "$$memphis"
 				creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
 			}
 			l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, username, creds)
@@ -34,7 +34,7 @@ func initalizeLogger() *logger.Logger {
 
 func main() {
 	configuration := conf.GetConfig()
-	l := initalizeLogger()
+	l := initializeLogger()
 	go handlers.CleanConnectionsCache()
 	app := router.SetupRoutes(l)
 	l.Noticef("Memphis REST gateway is up and running")
