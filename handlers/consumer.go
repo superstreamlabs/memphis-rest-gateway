@@ -185,7 +185,7 @@ func getQueryParamValue(urlString, paramName string) (string, error) {
 }
 
 func getConsumerNameParameterValue(urlString, defaultValue string) string {
-	consumerName, err := getQueryParamValue(urlString, "consumerName")
+	consumerName, err := getQueryParamValue(urlString, "consumer_name")
 	if err != nil {
 		consumerName = defaultValue
 	}
@@ -194,7 +194,7 @@ func getConsumerNameParameterValue(urlString, defaultValue string) string {
 }
 
 func getBatchSizeParameterValue(urlString string, defaultValue int) int {
-	batchSizeString, _ := getQueryParamValue(urlString, "batchSize")
+	batchSizeString, _ := getQueryParamValue(urlString, "batch_size")
 	batchSize, err := strconv.ParseInt(batchSizeString, 10, 64)
 	if err != nil {
 		return defaultValue

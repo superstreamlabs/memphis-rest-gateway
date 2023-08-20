@@ -28,7 +28,7 @@ type Configuration struct {
 	DB_PASSWORD                    string
 	DB_NAME                        string
 	DB_PORT                        string
-	DB_SSLMODE                     bool
+	DB_SSLMODE                     string
 	DB_TIME_ZONE                   string
 }
 

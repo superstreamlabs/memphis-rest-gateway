@@ -33,15 +33,16 @@ func New(config conf.Configuration, log *logger.Logger) MessageCache {
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err != nil {
 			log.Errorf("MessageCache.New - %s", err.Error())
-			log.Noticef("Defaulting to in-memory cache")
 		} else {
 			repo := Repository{db}
 			err := repo.MigrateMessages()
 			if err != nil {
 				log.Errorf("MessageCache.New - %s", err.Error())
 			}
+			log.Noticef("Using database for message cache")
 			return repo
 		}
 	}
+	log.Noticef("Defaulting to in-memory cache")
 	return InMemoryCache{map[string]map[string][]Message{}}
 }
