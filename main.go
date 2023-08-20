@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func initalizeLogger() *logger.Logger {
+func initializeLogger() *logger.Logger {
 	configuration := conf.GetConfig()
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -34,7 +34,7 @@ func initalizeLogger() *logger.Logger {
 
 func main() {
 	configuration := conf.GetConfig()
-	l := initalizeLogger()
+	l := initializeLogger()
 	go handlers.CleanConnectionsCache()
 	app := router.SetupRoutes(l)
 	l.Noticef("Memphis REST gateway is up and running")
