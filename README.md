@@ -102,7 +102,7 @@ curl --location --request POST 'https://REST_GW_URL:4444/auth/authenticate' \
     "username": "root",
     // "connection_token": "memphis", // OS Only: In case the chosen auth method is connection_token
     "password": "memphis, // OS + Cloud: client-type user password
-    "account_id": 123456789, // Cloud only
+    "account_id": 123456789, // Cloud only, in case you don't have the ability to set this field as a body param you can add it as a query string param, for example: https://<REST-GW-ADDRESS>/auth/authenticate?accountId=123456789
     "token_expiry_in_minutes": 60,
     "refresh_token_expiry_in_minutes": 10000092
 }'
