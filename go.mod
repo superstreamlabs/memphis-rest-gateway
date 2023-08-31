@@ -9,8 +9,6 @@ require (
 	github.com/memphisdev/memphis.go v1.1.1
 	github.com/nats-io/nats.go v1.25.0
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
-	gorm.io/driver/postgres v1.5.2
-	gorm.io/gorm v1.25.4
 )
 
 require (
@@ -22,11 +20,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/graph-gophers/graphql-go v1.5.0 // indirect
 	github.com/hamba/avro/v2 v2.13.0 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.3.1 // indirect
-	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.3 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect

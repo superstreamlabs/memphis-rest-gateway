@@ -11,6 +11,5 @@ func InitializeStationsRoutes(app *fiber.App) {
 	api := app.Group("/stations", logger.New())
 	api.Post("/:stationName/produce/single", handlers.CreateHandleMessage())
 	api.Post("/:stationName/produce/batch", handlers.CreateHandleBatch())
-	api.Get("/:stationName/consume", handlers.ConsumeHandleMessage())
-	api.Post("/:stationName/ack", handlers.AcknowledgeMessage())
+	api.Get("/:stationName/consume/batch", handlers.ConsumeHandleMessage())
 }

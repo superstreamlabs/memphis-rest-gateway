@@ -1,7 +1,6 @@
 package router
 
 import (
-	"rest-gateway/handlers"
 	"rest-gateway/logger"
 	"rest-gateway/middlewares"
 	"rest-gateway/utils"
@@ -16,7 +15,6 @@ func SetupRoutes(l *logger.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
-	handlers.InitializeMessageCache(l)
 
 	logger.SetLogger(app, l)
 	app.Use(cors.New())
