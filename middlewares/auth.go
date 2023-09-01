@@ -91,6 +91,7 @@ func Authenticate(c *fiber.Ctx) error {
 	path := strings.ToLower(string(c.Context().URI().RequestURI()))
 	var user models.AuthSchema
 	var err error
+	path = strings.Split(path, "?")[0]
 	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
 		tokenString, err := extractToken(headers["Authorization"])

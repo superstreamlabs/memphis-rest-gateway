@@ -75,7 +75,14 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	conn, err := Connect(body.Password, body.Username, body.ConnectionToken, int(body.AccountId))
+	accountId := int(body.AccountId)
+	if accountId == 0 {
+		accId, err := c.Request().URI().QueryArgs().GetUint("accountId")
+		if err == nil {
+			accountId = accId
+		}
+	}
+	conn, err := Connect(body.Password, body.Username, body.ConnectionToken, accountId)
 	if err != nil {
 		errMsg := strings.ToLower(err.Error())
 		if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
@@ -90,10 +97,10 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 			"message": "Server error",
 		})
 	}
-	if body.AccountId == 0 {
-		body.AccountId = 1
+	if accountId == 0 {
+		accountId = 1
 	}
-	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, body.Username, int(body.AccountId), body.Password, body.ConnectionToken)
+	token, refreshToken, tokenExpiry, refreshTokenExpiry, err := createTokens(body.TokenExpiryMins, body.RefreshTokenExpiryMins, body.Username, accountId, body.Password, body.ConnectionToken)
 	if err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -102,15 +109,15 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	}
 
 	username := strings.ToLower(body.Username)
-	accountId := strconv.Itoa(int(body.AccountId))
-	if ConnectionsCache[accountId] == nil {
+	accountIdStr := strconv.Itoa(accountId)
+	if ConnectionsCache[accountIdStr] == nil {
 		ConnectionsCacheLock.Lock()
-		ConnectionsCache[accountId] = make(map[string]Connection)
+		ConnectionsCache[accountIdStr] = make(map[string]Connection)
 		ConnectionsCacheLock.Unlock()
 	}
 
 	ConnectionsCacheLock.Lock()
-	ConnectionsCache[accountId][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
+	ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
 	ConnectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
