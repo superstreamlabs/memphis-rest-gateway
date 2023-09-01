@@ -217,6 +217,54 @@ Expected output:
 ```json
 {"errors":["Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'","Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'"],"fail":2,"sent":1,"success":false}
 ```
+### Consume a batch of messages&#x20;
+
+Attach the JWT token to every request.\
+JWT token as '`Bearer`' as a header.
+
+The messages are auto acknowledged by the rest gateway.
+
+#### Supported content types:
+
+* application/json
+
+#### Example:
+
+```bash
+curl --location --request POST 'rest_gateway:4444/stations/<station_name>/consume/batch' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "consumer_name": <consumer_name> string required,
+    "consumer_group_name": <consumer_group_name> string defaults to <consumer_name>,
+    "batch_size": <batch_size> integer defaults to 10,
+    "batch_max_wait_time": <batch_max_wait_time> integer defaults to 5 secs,
+    "max_ack_time": <max_ack_time> integer defaults to 30 secs,
+    "max_msg_deliveries": <max_msg_deliveries> integer defaults to 10
+}'
+```
+
+Expected output:
+
+```json
+[
+    {
+        "message": "{\n    \"message\": \"How're you doing\"\n}"
+    },
+    {
+        "message": "{\n    \"message\": \"How far\"\n}"
+    }
+]
+```
+
+#### Error Examples:
+
+```json
+{
+    "error": "Consumer name is required",
+    "success": false
+}
+```
 
 ## Support 🙋‍♂️🤝
 

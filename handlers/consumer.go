@@ -20,7 +20,7 @@ type requestBody struct {
 	MaxMsgDeliveries  int    `json:"max_msg_deliveries"`
 }
 
-func (r requestBody) initializeDefaults() {
+func (r *requestBody) initializeDefaults() {
 	if r.ConsumerGroupName == "" {
 		r.ConsumerGroupName = r.ConsumerName
 	}
@@ -88,13 +88,13 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		msgs, err := conn.FetchMessages(stationName, reqBody.ConsumerName,
 			memphis.FetchBatchSize(reqBody.BatchSize),
 			memphis.FetchConsumerGroup(reqBody.ConsumerGroupName),
-			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTime)),
-			memphis.FetchMaxAckTime(time.Duration(reqBody.MaxAckTime)),
+			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTime)*time.Second),
+			memphis.FetchMaxAckTime(time.Duration(reqBody.MaxAckTime)*time.Second),
 			memphis.FetchMaxMsgDeliveries(reqBody.MaxMsgDeliveries))
 
 		if err != nil {
 			log.Errorf("ConsumeHandleMessage - fetch messages: %s", err.Error())
-			c.Status(fiber.StatusBadRequest)
+			c.Status(fiber.StatusInternalServerError)
 			return c.JSON(&fiber.Map{
 				"success": false,
 				"error":   "Server error",
@@ -102,14 +102,14 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		}
 
 		type message struct {
-			Data string `json:"data"`
+			Message string `json:"message"`
 		}
 		messages := []message{}
 
 		for _, msg := range msgs {
 			err := msg.Ack()
 			if err != nil {
-				log.Errorf("ConsumeHandleMessage - consume: %s", err)
+				log.Errorf("ConsumeHandleMessage - acknowledge message: %s", err)
 			}
 			messages = append(messages, message{string(msg.Data())})
 		}
