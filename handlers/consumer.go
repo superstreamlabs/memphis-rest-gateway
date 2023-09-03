@@ -12,26 +12,22 @@ import (
 )
 
 type requestBody struct {
-	ConsumerName      string `json:"consumer_name"`
-	ConsumerGroupName string `json:"consumer_group_name"`
-	BatchSize         int    `json:"batch_size"`
-	MaxAckTime        int    `json:"max_ack_time"`
-	BatchMaxWaitTime  int    `json:"batch_max_wait_time"`
-	MaxMsgDeliveries  int    `json:"max_msg_deliveries"`
+	ConsumerName       string `json:"consumer_name"`
+	ConsumerGroup      string `json:"consumer_group"`
+	BatchSize          int    `json:"batch_size"`
+	BatchMaxWaitTimeMs int    `json:"batch_max_wait_time_ms"`
+	MaxMsgDeliveries   int    `json:"max_msg_deliveries"`
 }
 
 func (r *requestBody) initializeDefaults() {
-	if r.ConsumerGroupName == "" {
-		r.ConsumerGroupName = r.ConsumerName
+	if r.ConsumerGroup == "" {
+		r.ConsumerGroup = r.ConsumerName
 	}
 	if r.BatchSize == 0 {
 		r.BatchSize = 10
 	}
-	if r.BatchMaxWaitTime == 0 {
-		r.BatchMaxWaitTime = 5
-	}
-	if r.MaxAckTime == 0 {
-		r.MaxAckTime = 30
+	if r.BatchMaxWaitTimeMs == 0 {
+		r.BatchMaxWaitTimeMs = 5000
 	}
 	if r.MaxMsgDeliveries == 0 {
 		r.MaxMsgDeliveries = 10
@@ -87,9 +83,8 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		reqBody.initializeDefaults()
 		msgs, err := conn.FetchMessages(stationName, reqBody.ConsumerName,
 			memphis.FetchBatchSize(reqBody.BatchSize),
-			memphis.FetchConsumerGroup(reqBody.ConsumerGroupName),
-			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTime)*time.Second),
-			memphis.FetchMaxAckTime(time.Duration(reqBody.MaxAckTime)*time.Second),
+			memphis.FetchConsumerGroup(reqBody.ConsumerGroup),
+			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTimeMs)*time.Millisecond),
 			memphis.FetchMaxMsgDeliveries(reqBody.MaxMsgDeliveries))
 
 		if err != nil {
@@ -102,7 +97,8 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		}
 
 		type message struct {
-			Message string `json:"message"`
+			Message string            `json:"message"`
+			Headers map[string]string `json:"headers"`
 		}
 		messages := []message{}
 
@@ -111,7 +107,10 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 			if err != nil {
 				log.Errorf("ConsumeHandleMessage - acknowledge message: %s", err)
 			}
-			messages = append(messages, message{string(msg.Data())})
+			messages = append(messages, message{
+				Message: string(msg.Data()),
+				Headers: msg.GetHeaders(),
+			})
 		}
 		c.Status(fiber.StatusOK)
 		return c.JSON(&messages)
