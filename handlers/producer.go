@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"rest-gateway/logger"
@@ -72,16 +71,14 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			accountIdStr := strconv.Itoa(int(accountId))
 			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
-				errMsg := fmt.Sprintf("Connection does not exist")
-				log.Errorf("CreateHandleMessage - produce: %s", errMsg)
-
+				log.Warnf("CreateHandleMessage - produce: Connection does not exist")
 				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   "Server error",
 				})
 			}
-			err = conn.Produce(stationName, "rest_gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
+			err = conn.Produce(stationName, "rest-gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
 				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
 				c.Status(fiber.StatusInternalServerError)
@@ -147,9 +144,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 			accountIdStr := strconv.Itoa(int(accountId))
 			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
-				errMsg := fmt.Sprintf("Connection does not exist")
-				log.Errorf("CreateHandleBatch - produce: %s", errMsg)
-
+				log.Warnf("CreateHandleBatch - produce: Connection does not exist")
 				c.Status(fiber.StatusInternalServerError)
 				return c.JSON(&fiber.Map{
 					"success": false,
@@ -166,7 +161,7 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 					allErr = append(allErr, err.Error())
 					continue
 				}
-				if err := conn.Produce(stationName, "rest_gateway", rawRes, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
+				if err := conn.Produce(stationName, "rest-gateway", rawRes, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
 					log.Errorf("CreateHandleBatch - produce: %s", err.Error())
 					errCount++
 					allErr = append(allErr, err.Error())

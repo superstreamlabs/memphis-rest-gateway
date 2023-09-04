@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/memphisdev/memphis.go"
 	"rest-gateway/logger"
 	"rest-gateway/models"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/memphisdev/memphis.go"
 )
 
 type requestBody struct {
@@ -16,21 +17,19 @@ type requestBody struct {
 	ConsumerGroup      string `json:"consumer_group"`
 	BatchSize          int    `json:"batch_size"`
 	BatchMaxWaitTimeMs int    `json:"batch_max_wait_time_ms"`
-	MaxMsgDeliveries   int    `json:"max_msg_deliveries"`
 }
 
 func (r *requestBody) initializeDefaults() {
 	if r.ConsumerGroup == "" {
-		r.ConsumerGroup = r.ConsumerName
+		r.ConsumerGroup = "rest-gateway"
+	} else {
+		r.ConsumerGroup = fmt.Sprintf("%s-rest-gateway", r.ConsumerGroup)
 	}
 	if r.BatchSize == 0 {
 		r.BatchSize = 10
 	}
 	if r.BatchMaxWaitTimeMs == 0 {
 		r.BatchMaxWaitTimeMs = 5000
-	}
-	if r.MaxMsgDeliveries == 0 {
-		r.MaxMsgDeliveries = 10
 	}
 }
 
@@ -71,9 +70,7 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		accountIdStr := strconv.Itoa(int(accountId))
 		conn := ConnectionsCache[accountIdStr][username].Connection
 		if conn == nil {
-			errMsg := fmt.Sprintf("Connection does not exist")
-			log.Errorf("ConsumeHandleMessage - consume: %s", errMsg)
-
+			log.Warnf("ConsumeHandleMessage - consume: Connection does not exist")
 			c.Status(fiber.StatusInternalServerError)
 			return c.JSON(&fiber.Map{
 				"success": false,
@@ -85,14 +82,14 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 			memphis.FetchBatchSize(reqBody.BatchSize),
 			memphis.FetchConsumerGroup(reqBody.ConsumerGroup),
 			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTimeMs)*time.Millisecond),
-			memphis.FetchMaxMsgDeliveries(reqBody.MaxMsgDeliveries))
+			memphis.FetchMaxMsgDeliveries(1))
 
 		if err != nil {
 			log.Errorf("ConsumeHandleMessage - fetch messages: %s", err.Error())
-			c.Status(fiber.StatusInternalServerError)
+			c.Status(fiber.StatusBadRequest)
 			return c.JSON(&fiber.Map{
 				"success": false,
-				"error":   "Server error",
+				"error":   err.Error(),
 			})
 		}
 

@@ -238,8 +238,7 @@ curl --location --request POST 'rest_gateway:4444/stations/<station_name>/consum
     "consumer_name": <consumer_name> string required,
     "consumer_group": <consumer_group> string defaults to <consumer_name>,
     "batch_size": <batch_size> integer defaults to 10,
-    "batch_max_wait_time_ms": <batch_max_wait_time> integer defaults to 5 secs,
-    "max_msg_deliveries": <max_msg_deliveries> integer defaults to 10
+    "batch_max_wait_time_ms": <batch_max_wait_time> integer defaults to 5 secs
 }'
 ```
 
@@ -250,49 +249,15 @@ Expected output:
   {
     "message": "{\n    \"message\": \"message x\"\n}",
     "headers": {
-      "$memphis_connectionId": "ab083953-a3b1-467b-8487-dfcd24e2ba59",
-      "$memphis_producedBy": "rest_gateway",
       "Accept": "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoxLCJjb25uZWN0aW9uX3Rva2VuIjoiIiwiZXhwIjoxNjkzNzc2MzYzLCJwYXNzd29yZCI6IkBlYnViZUBBZ3UxIiwidXNlcm5hbWUiOiJlYnViZWFndSJ9.QW2sx1mVyyQ1g88Gclj9VNfwvXU4Fr__M1XXbjc6jis",
-      "Connection": "keep-alive",
-      "Content-Length": "30",
-      "Content-Type": "application/json",
-      "Host": "localhost:4444",
-      "Postman-Token": "1c1947d9-5dfb-4c3a-8da7-a31fbf993be6",
-      "User-Agent": "PostmanRuntime/7.32.3"
+      "Accept-Encoding": "gzip, deflate, br"
     }
   },
   {
     "message": "{\n    \"message\": \"message y\"\n}",
     "headers": {
-      "$memphis_connectionId": "ab083953-a3b1-467b-8487-dfcd24e2ba59",
-      "$memphis_producedBy": "rest_gateway",
-      "Accept": "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoxLCJjb25uZWN0aW9uX3Rva2VuIjoiIiwiZXhwIjoxNjkzNzc2MzYzLCJwYXNzd29yZCI6IkBlYnViZUBBZ3UxIiwidXNlcm5hbWUiOiJlYnViZWFndSJ9.QW2sx1mVyyQ1g88Gclj9VNfwvXU4Fr__M1XXbjc6jis",
-      "Connection": "keep-alive",
-      "Content-Length": "30",
       "Content-Type": "application/json",
-      "Host": "localhost:4444",
-      "Postman-Token": "9f76af3e-a861-483b-a2f0-b3f7e9e72125",
-      "User-Agent": "PostmanRuntime/7.32.3"
-    }
-  },
-  {
-    "message": "{\n    \"message\": \"Hello world\"\n}",
-    "headers": {
-      "$memphis_connectionId": "ab083953-a3b1-467b-8487-dfcd24e2ba59",
-      "$memphis_producedBy": "rest_gateway",
-      "Accept": "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoxLCJjb25uZWN0aW9uX3Rva2VuIjoiIiwiZXhwIjoxNjkzNzc2MzYzLCJwYXNzd29yZCI6IkBlYnViZUBBZ3UxIiwidXNlcm5hbWUiOiJlYnViZWFndSJ9.QW2sx1mVyyQ1g88Gclj9VNfwvXU4Fr__M1XXbjc6jis",
-      "Connection": "keep-alive",
-      "Content-Length": "32",
-      "Content-Type": "application/json",
-      "Host": "localhost:4444",
-      "Postman-Token": "7fe95b24-edae-4415-bc4c-258e6c93a51d",
-      "User-Agent": "PostmanRuntime/7.32.3"
+      "Host": "localhost:4444"
     }
   }
 ]
