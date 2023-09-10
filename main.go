@@ -35,6 +35,10 @@ func initializeLogger() *logger.Logger {
 func main() {
 	configuration := conf.GetConfig()
 	l := initializeLogger()
+	err := handlers.ListenForUpdates(l)
+	if err != nil {
+		panic("Error while listening for updates - " + err.Error())
+	}
 	go handlers.CleanConnectionsCache()
 	app := router.SetupRoutes(l)
 	l.Noticef("Memphis REST gateway is up and running")

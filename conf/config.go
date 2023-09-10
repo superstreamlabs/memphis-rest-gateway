@@ -22,6 +22,7 @@ type Configuration struct {
 	ROOT_PASSWORD                  string
 	DEBUG                          bool
 	CLOUD_ENV                      bool
+	REST_GW_UPDATES_SUBJ           string
 }
 
 func GetConfig() Configuration {
