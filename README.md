@@ -85,89 +85,129 @@ Soon.
 If you are using Memphis **Open-Source** version, please make sure your 'REST gateway' component is exposed either through localhost or public IP.<br><br>
 If you are using Memphis **Cloud**, it is already in.
 
-### Authenticate
+### 1. Create a JWT token
 
-First, you have to authenticate to get a JWT token.\
-The default expiration time is 15 minutes.
+Please create a JWT token, which will be part of each produce/consume request. For authentication purposes.
 
-#### Example:
+* The generated JWT will encapsulate all the needed information for the broker to ensure the requester is authenticated to communicate with Memphis.
+* JWT token (by design) has an expiration time. Token refreshment can take place progrematically, but as it is often used to integrate memphis with other systems which are not supporting JWT refreshment, a workaround to overcome it would be to set a very high value in the `token_expiry_in_minutes`.
+* The default expiry time is 15 minutes.
 
-* Cloud: Your REST GW URL can be found within a station->code examples
-* OS: The REST GW will be deploy by default, and as with any other service, should be exposed based on your deployment type.
+**Cloud (Using body params)**<br>
+* Please replace the [Cloud], [Region], Username, Password, and Account ID with your parameters.
+```bash
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/auth/authenticate' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "username": "CLIENT_TYPE_USERNAME",
+    "password": "CLIENT_TYPE_PASSWORD",
+    "account_id": 123456789,
+    "token_expiry_in_minutes": 6000000,
+    "refresh_token_expiry_in_minutes": 100000
+}'
+```
 
+**Cloud (Using query params)**<br>
+* Please replace the [Cloud], [Region], Username, Password, and Account ID with your parameters.
+```bash
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/auth/authenticate?accountId=123456789' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "username": "CLIENT_TYPE_USERNAME",
+    "password": "CLIENT_TYPE_PASSWORD",
+    "token_expiry_in_minutes": 6000000,
+    "refresh_token_expiry_in_minutes": 100000
+}'
+```
+
+**Open-source**
 ```bash
 curl --location --request POST 'https://REST_GW_URL:4444/auth/authenticate' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "username": "root",
-    // "connection_token": "memphis", // OS Only: In case the chosen auth method is connection_token
-    "password": "memphis, // OS + Cloud: client-type user password
-    "account_id": 123456789, // Cloud only, in case you don't have the ability to set this field as a body param you can add it as a query string param, for example: https://<REST-GW-ADDRESS>/auth/authenticate?accountId=123456789
-    "token_expiry_in_minutes": 60,
-    "refresh_token_expiry_in_minutes": 10000092
+    "username": "CLIENT_TYPE_USERNAME",
+    "password": "CLIENT_TYPE_PASSWORD,
+    "token_expiry_in_minutes": 6000000,
+    "refresh_token_expiry_in_minutes": 100000
 }'
 ```
 
 Expected output:&#x20;
 
 ```JSON
-{"expires_in":3600000,"jwt":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzQ3MTg0MjV9._A-fRI78fPPHL6eUFoWZjp21UYVcjXwGWiYtacYPZR8","jwt_refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNzQ3MjAzNDV9.d89acaIr4CaBp7csm-jmJv0J45YrD_slvlEOKu2rs7Q","refresh_token_expires_in":600005520000}
+{"expires_in":3600000,"jwt":"eyJhbGciO***************nR5cCI6IkpXVCJ9.eyJleHAiOjE2NzQ3MTg0MjV9._A************UFoWZjp21UYVcjXwGWiYtacYPZR8","jwt_refresh_token":"eyJhbGciOiJIUzI1N***************kpXVCJ9.eyJleHAiOjIy*********************7csm-jmJv0J45YrD_slvlEOKu2rs7Q","refresh_token_expires_in":600005520000}
 ```
+<hr>
 
-#### Parameters
+**Refresh a token**
 
-`username`: Memphis application-type username\
-`connection_token`: Memphis application-type connection token\
-`token_expiry_in_minutes`: Initial token expiration time.\
-`refresh_token_expiry_in_minutes`: When should
+Before the JWT token expires or after an authentication failure, you must call the refresh procedure and get a new token. The refresh JWT token is valid by default for 5 hours.
 
-### Refresh Token
-
-Before the JWT token expires, you must call the refresh token to get a new one, or after authentication failure.\
-The refresh JWT is valid by default for 5 hours.
-
-#### Example:
-
+**Cloud**<br>
+* Please replace the [Cloud], [Region], Username, and Password with your parameters.
 ```bash
-curl --location --request POST 'rest_gateway:4444/auth/refreshToken' \
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/auth/refreshToken' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "jwt_refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNzQ3MjA2NjB9.Furfr5EZlBlglVPSjtU4x02z_jbWhu5pIByhCRh6FU8",
-    "token_expiry_in_minutes": 60,
-    "refresh_token_expiry_in_minutes": 10000092
+    "jwt_refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNz*******************VPSjtU4x02z_jbWhu5pIByhCRh6FU8",
+    "token_expiry_in_minutes": 60000000,
+    "refresh_token_expiry_in_minutes": 10000000
+}'
+```
+
+**Open-source**
+```bash
+curl --location --request POST 'https://REST_GW_URL:4444/auth/refreshToken' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "jwt_refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNz*******************VPSjtU4x02z_jbWhu5pIByhCRh6FU8",
+    "token_expiry_in_minutes": 60000000,
+    "refresh_token_expiry_in_minutes": 10000000
 }'
 ```
 
 Expected output:
 
 ```json
-{"expires_in":3600000,"jwt":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzQ3MTg3NTF9.EO5ersr0kQxQNRI0XlbqzOryt-F1-MmFGXRKn2sM8Yw","jwt_refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyNzQ3MjA2NzF9.E621wF_ieC-9rq4IgrsqYMPApAPS8YDgkT8R-69-Y5E","refresh_token_expires_in":600005520000}
+{"expires_in":3600000,"jwt":"eyJhb**************5cCI6IkpXVCJ9.eyJleHAiOjE2NzQ3MTg3N*******************F1-MmFGXRKn2sM8Yw","jwt_refresh_token":"eyJhbGciOiJIUzI*****************IkpXVCJ9.eyJleHAiOjIyNz***********************grsqYMPApAPS8YDgkT8R-69-Y5E","refresh_token_expires_in":600005520000}
 ```
+<hr>
 
-### Produce a single message
+### 2. Produce a single message
 
-Attach the JWT token to every request.\
-JWT token as '`Bearer`' as a header.
-
-#### Supported content types:
+**Supported content types:**
 
 * text
 * application/json
 * application/x-protobuf
 
-#### Example:
+
+**Cloud (Using body params)**
+* Please replace the [Cloud], [Region], JWT token (right after `Bearer`) with your parameters.
+
 
 ```bash
-curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/single' \
---header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/stations/STATION_NAME/produce/single' \
+--header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGR**************VrLKsvHo33u3UdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '{"message": "New Message"}'
 ```
 
-#### If you don't have the option to add the authorization header, you can send the JWT via query parameters:
+**Cloud (Using query params)**
+* Please replace the [Cloud], [Region], JWT token with your parameters.
 
 ```bash
-curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/single?authorization=eyJhbGciOiJIU**********.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/stations/STATION_NAME/produce/single?authorization=eyJhbGciOiJIU**********.e30.4KOLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '{"message": "New Message"}'
+```
+
+**Open-source**
+* Please replace the JWT token (right after `Bearer`) with your parameter.
+
+```bash
+curl --location --request POST 'rest_gateway:4444/stations/STATION_NAME/produce/single' \
+--header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGRhUaqvmUdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '{"message": "New Message"}'
 ```
@@ -178,26 +218,53 @@ Expected output:
 {"error":null,"success":true}
 ```
 
-#### Error Example:
+Schema error example:
 
 ```json
 {"error":"Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1', 'field2', 'field3'","success":false}
 ```
 
-### Produce a batch of messages&#x20;
+<hr>
 
-Attach the JWT token to every request.\
-JWT token as '`Bearer`' as a header.
-
-#### Supported content types:
+### 3. Produce a batch of messages
+**Supported content types:**
 
 * application/json
 
-#### Example:
+**Cloud (Using body params)**
+* Please replace the [Cloud], [Region], JWT token (right after `Bearer`) with your parameters.
+
 
 ```bash
-curl --location --request POST 'rest_gateway:4444/stations/<station_name>/produce/batch' \
---header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/stations/STATION_NAME/produce/batch' \
+--header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGR**************VrLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '[
+    {"message": "x"},
+    {"message": "y"},
+    {"message": "z"}
+]'
+```
+
+**Cloud (Using query params)**
+* Please replace the [Cloud], [Region], JWT token with your parameters.
+
+```bash
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/stations/STATION_NAME/produce/batch?authorization=eyJhbGciOiJIU**********.e30.4KOLKsvHo33u3UdJ0qYP0kI' \
+--header 'Content-Type: application/json' \
+--data-raw '[
+    {"message": "x"},
+    {"message": "y"},
+    {"message": "z"}
+]'
+```
+
+**Open-source**
+* Please replace the JWT token (right after `Bearer`) with your parameter.
+
+```bash
+curl --location --request POST 'rest_gateway:4444/stations/STATION_NAME/produce/batch' \
+--header 'Authorization: Bearer eyJhbGciOiJIU**********.e30.4KOGRhUaqvmUdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '[
     {"message": "x"},
@@ -212,33 +279,51 @@ Expected output:
 {"error":null,"success":true}
 ```
 
-#### Error Examples:
+Schema error example:
 
 ```json
 {"errors":["Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'","Schema validation has failed: jsonschema: '' does not validate with file:///Users/user/memphisdev/memphis-rest-gateway/123#/required: missing properties: 'field1'"],"fail":2,"sent":1,"success":false}
 ```
-### Consume a batch of messages&#x20;
 
-Attach the JWT token to every request.\
-JWT token as '`Bearer`' as a header.
+<hr>
 
-The messages are auto acknowledged by the rest gateway.
 
-#### Supported content types:
+### 4. Consume a batch of messages&#x20;
+
+To avoid reading the same message twice and reduce network traffic for an ack per message, which is not scalable, messages are auto-acknowledged by the rest gateway.
+
+**Supported content types:**
 
 * application/json
 
-#### Example:
+**Cloud (Using body params)**
+* Please replace the [Cloud], [Region], JWT token (right after `Bearer`) with your parameters.
+
 
 ```bash
-curl --location --request POST 'rest_gateway:4444/stations/<station_name>/consume/batch' \
+curl --location --request POST 'https://[Cloud]-[Region].restgw.cloud.memphis.dev/stations/STATION_NAME/consume/batch' \
+--header 'Authorization: Bearer eyJ***************XVCJ9.e30.4KOGRhUaqvm-qSHnmMw****************' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "consumer_name": <consumer_name>,
+    "consumer_group": <consumer_group>,
+    "batch_size": <batch_size>,
+    "batch_max_wait_time_ms": <batch_max_wait_time>,
+}'
+```
+
+**Open-source**
+* Please replace the JWT token (right after `Bearer`) with your parameter.
+
+```bash
+curl --location --request POST 'rest_gateway:4444/stations/STATION_NAME/consume/batch' \
 --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.4KOGRhUaqvm-qSHnmMwX5VrLKsvHo33u3UdJ0qYP0kI' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "consumer_name": <consumer_name> string required,
-    "consumer_group": <consumer_group> string defaults to <consumer_name>,
-    "batch_size": <batch_size> integer defaults to 10,
-    "batch_max_wait_time_ms": <batch_max_wait_time> integer defaults to 5 secs
+    "consumer_name": <consumer_name>,
+    "consumer_group": <consumer_group>,
+    "batch_size": <batch_size>,
+    "batch_max_wait_time_ms": <batch_max_wait_time>
 }'
 ```
 

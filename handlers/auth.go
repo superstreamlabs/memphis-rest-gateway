@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
+	"rest-gateway/memphisSingleton"
 	"rest-gateway/models"
 	"rest-gateway/utils"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/memphisdev/memphis.go"
+	"github.com/nats-io/nats.go"
 )
 
 var configuration = conf.GetConfig()
@@ -80,8 +83,15 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		accId, err := c.Request().URI().QueryArgs().GetUint("accountId")
 		if err == nil {
 			accountId = accId
+		} else {
+			splittedUsername := strings.Split(body.Username, "$")
+			if len(splittedUsername) > 1 {
+				accountId, _ = strconv.Atoi(splittedUsername[1])
+				body.Username = splittedUsername[0]
+			}
 		}
 	}
+
 	conn, err := Connect(body.Password, body.Username, body.ConnectionToken, accountId)
 	if err != nil {
 		errMsg := strings.ToLower(err.Error())
@@ -119,6 +129,43 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	ConnectionsCacheLock.Lock()
 	ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
 	ConnectionsCacheLock.Unlock()
+
+	mc, err := memphisSingleton.GetMemphisConnection("", "", "") // already initialized on logger creation
+	if err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+
+	update := models.RestGwUpdate{
+		Type: "update_connection",
+		Update: map[string]interface{}{
+			"password":         body.Password,
+			"username":         body.Username,
+			"connection_token": body.ConnectionToken,
+			"account_id":       accountId,
+			"token_expiry":     tokenExpiry,
+		},
+	}
+
+	msg, err := json.Marshal(update)
+	if err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+
+	// send to other rest GWs to update their cache
+	err = mc.Publish(configuration.REST_GW_UPDATES_SUBJ, msg)
+	if err != nil {
+		log.Errorf("Authenticate: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
 		"expires_in":               tokenExpiry * 60 * 1000,
@@ -242,7 +289,11 @@ func CleanConnectionsCache() {
 				currentTime := time.Now()
 				unixTimeNow := currentTime.Unix()
 				conn := ConnectionsCache[t][u].Connection
-				if unixTimeNow > int64(user.ExpirationTime) {
+				if !conn.IsConnected() {
+					ConnectionsCacheLock.Lock()
+					delete(ConnectionsCache[t], u)
+					ConnectionsCacheLock.Unlock()
+				} else if unixTimeNow > int64(user.ExpirationTime) {
 					conn.Close()
 					ConnectionsCacheLock.Lock()
 					delete(ConnectionsCache[t], u)
@@ -256,4 +307,60 @@ func CleanConnectionsCache() {
 			}
 		}
 	}
+}
+
+func ListenForUpdates(log *logger.Logger) error {
+	mc, err := memphisSingleton.GetMemphisConnection("", "", "") // already initialized on logger creation
+	if err != nil {
+		return err
+	}
+
+	_, err = mc.Subscribe(configuration.REST_GW_UPDATES_SUBJ, func(msg *nats.Msg) {
+		var update models.RestGwUpdate
+		err := json.Unmarshal(msg.Data, &update)
+		if err != nil {
+			log.Errorf("update unmarshal error: %v\n", err.Error())
+			return
+		}
+
+		switch update.Type {
+		case "update_connection":
+			username := update.Update["username"].(string)
+			accountId := int(update.Update["account_id"].(float64))
+			username = strings.ToLower(username)
+			accountIdStr := strconv.Itoa(accountId)
+
+			if ConnectionsCache[accountIdStr] != nil {
+				_, exists := ConnectionsCache[accountIdStr][username]
+				if exists {
+					return // connection already exists, nothing to update
+				}
+			}
+
+			conn, err := Connect(update.Update["password"].(string), username, update.Update["connection_token"].(string), accountId)
+			if err != nil {
+				errMsg := strings.ToLower(err.Error())
+				if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+					return
+				}
+
+				log.Errorf("ListenForUpdates: %s", err.Error())
+				return
+			}
+
+			if ConnectionsCache[accountIdStr] == nil {
+				ConnectionsCacheLock.Lock()
+				ConnectionsCache[accountIdStr] = make(map[string]Connection)
+				ConnectionsCacheLock.Unlock()
+			}
+
+			ConnectionsCacheLock.Lock()
+			ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: int64(update.Update["token_expiry"].(float64))}
+			ConnectionsCacheLock.Unlock()
+		}
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
