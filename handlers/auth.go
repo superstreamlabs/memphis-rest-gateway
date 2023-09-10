@@ -83,6 +83,12 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 		accId, err := c.Request().URI().QueryArgs().GetUint("accountId")
 		if err == nil {
 			accountId = accId
+		} else {
+			splittedUsername := strings.Split(body.Username, "$")
+			if len(splittedUsername) > 1 {
+				accountId, _ = strconv.Atoi(splittedUsername[1])
+				body.Username = splittedUsername[0]
+			}
 		}
 	}
 
