@@ -100,7 +100,7 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 			memphis.FetchBatchSize(reqBody.BatchSize),
 			memphis.FetchConsumerGroup(reqBody.ConsumerGroup),
 			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTimeMs)*time.Millisecond),
-			memphis.FetchMaxMsgDeliveries(3)) // for cases of broker crash before sending the messages to the client
+			memphis.FetchMaxMsgDeliveries(1)) // for cases of broker crash before sending the messages to the client
 
 		if err != nil && !strings.Contains(err.Error(), "fetch timed out") {
 			log.Errorf("ConsumeHandleMessage - fetch messages: %s", err.Error())
@@ -120,7 +120,12 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		for _, msg := range msgs {
 			err := msg.Ack()
 			if err != nil {
-				log.Errorf("ConsumeHandleMessage - acknowledge message: %s", err)
+				time.AfterFunc(5*time.Second, func() { // retry after 5 seconds for cases of broker crash
+					err := msg.Ack()
+					if err != nil {
+						log.Errorf("ConsumeHandleMessage - acknowledge message: %s", err)
+					}
+				})
 			}
 			messages = append(messages, message{
 				Message: string(msg.Data()),
