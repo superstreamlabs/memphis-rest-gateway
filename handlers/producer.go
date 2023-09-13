@@ -71,12 +71,30 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			accountIdStr := strconv.Itoa(int(accountId))
 			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
-				log.Warnf("CreateHandleMessage - produce: Connection does not exist")
-				c.Status(fiber.StatusInternalServerError)
-				return c.JSON(&fiber.Map{
-					"success": false,
-					"error":   "Server error",
-				})
+				conn, err = Connect(userData.Password, username, userData.ConnectionToken, int(accountId))
+				if err != nil {
+					errMsg := strings.ToLower(err.Error())
+					if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+						log.Warnf("Could not establish new connection with the broker: Authentication error")
+						return c.Status(401).JSON(fiber.Map{
+							"message": "Unauthorized",
+						})
+					}
+
+					log.Errorf("Could not establish new connection with the broker: %s", err.Error())
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"message": "Server error",
+					})
+				}
+				if ConnectionsCache[accountIdStr] == nil {
+					ConnectionsCacheLock.Lock()
+					ConnectionsCache[accountIdStr] = make(map[string]Connection)
+					ConnectionsCacheLock.Unlock()
+				}
+
+				ConnectionsCacheLock.Lock()
+				ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
+				ConnectionsCacheLock.Unlock()
 			}
 			err = conn.Produce(stationName, "rest-gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
@@ -144,12 +162,30 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 			accountIdStr := strconv.Itoa(int(accountId))
 			conn := ConnectionsCache[accountIdStr][username].Connection
 			if conn == nil {
-				log.Warnf("CreateHandleBatch - produce: Connection does not exist")
-				c.Status(fiber.StatusInternalServerError)
-				return c.JSON(&fiber.Map{
-					"success": false,
-					"error":   "Server error",
-				})
+				conn, err = Connect(userData.Password, username, userData.ConnectionToken, int(accountId))
+				if err != nil {
+					errMsg := strings.ToLower(err.Error())
+					if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+						log.Warnf("Could not establish new connection with the broker: Authentication error")
+						return c.Status(401).JSON(fiber.Map{
+							"message": "Unauthorized",
+						})
+					}
+
+					log.Errorf("Could not establish new connection with the broker: %s", err.Error())
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"message": "Server error",
+					})
+				}
+				if ConnectionsCache[accountIdStr] == nil {
+					ConnectionsCacheLock.Lock()
+					ConnectionsCache[accountIdStr] = make(map[string]Connection)
+					ConnectionsCacheLock.Unlock()
+				}
+
+				ConnectionsCacheLock.Lock()
+				ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
+				ConnectionsCacheLock.Unlock()
 			}
 
 			errCount := 0

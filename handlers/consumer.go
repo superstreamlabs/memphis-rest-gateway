@@ -70,21 +70,39 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 		accountIdStr := strconv.Itoa(int(accountId))
 		conn := ConnectionsCache[accountIdStr][username].Connection
 		if conn == nil {
-			log.Warnf("ConsumeHandleMessage - consume: Connection does not exist")
-			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(&fiber.Map{
-				"success": false,
-				"error":   "Server error",
-			})
+			conn, err = Connect(userData.Password, username, userData.ConnectionToken, int(accountId))
+			if err != nil {
+				errMsg := strings.ToLower(err.Error())
+				if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+					log.Warnf("Could not establish new connection with the broker: Authentication error")
+					return c.Status(401).JSON(fiber.Map{
+						"message": "Unauthorized",
+					})
+				}
+
+				log.Errorf("Could not establish new connection with the broker: %s", err.Error())
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"message": "Server error",
+				})
+			}
+			if ConnectionsCache[accountIdStr] == nil {
+				ConnectionsCacheLock.Lock()
+				ConnectionsCache[accountIdStr] = make(map[string]Connection)
+				ConnectionsCacheLock.Unlock()
+			}
+
+			ConnectionsCacheLock.Lock()
+			ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
+			ConnectionsCacheLock.Unlock()
 		}
 		reqBody.initializeDefaults()
 		msgs, err := conn.FetchMessages(stationName, reqBody.ConsumerName,
 			memphis.FetchBatchSize(reqBody.BatchSize),
 			memphis.FetchConsumerGroup(reqBody.ConsumerGroup),
 			memphis.FetchBatchMaxWaitTime(time.Duration(reqBody.BatchMaxWaitTimeMs)*time.Millisecond),
-			memphis.FetchMaxMsgDeliveries(1))
+			memphis.FetchMaxMsgDeliveries(3)) // for cases of broker crash before sending the messages to the client
 
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "fetch timed out") {
 			log.Errorf("ConsumeHandleMessage - fetch messages: %s", err.Error())
 			c.Status(fiber.StatusBadRequest)
 			return c.JSON(&fiber.Map{

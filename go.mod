@@ -6,7 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.48.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/memphisdev/memphis.go v1.1.2
+	github.com/memphisdev/memphis.go v1.1.3
 	github.com/nats-io/nats.go v1.25.0
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
@@ -35,6 +35,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
+	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.48.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

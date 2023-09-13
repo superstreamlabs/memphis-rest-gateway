@@ -69,18 +69,21 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 				Username:        claims["username"].(string),
 				ConnectionToken: claims["connection_token"].(string),
 				AccountId:       1,
+				TokenExpiry:     claims["exp"].(int64),
 			}
 		} else {
 			user = models.AuthSchema{
-				Username:  claims["username"].(string),
-				Password:  claims["password"].(string),
-				AccountId: claims["account_id"].(float64),
+				Username:    claims["username"].(string),
+				Password:    claims["password"].(string),
+				AccountId:   claims["account_id"].(float64),
+				TokenExpiry: int64(claims["exp"].(float64)),
 			}
 		}
 	} else {
 		// for backward compatability
 		user = models.AuthSchema{
 			TokenExpiryMins: int(claims["exp"].(float64)),
+			TokenExpiry:     int64(claims["exp"].(float64)),
 		}
 	}
 	return user, nil
