@@ -12,4 +12,5 @@ func InitilizeAuthRoutes(app *fiber.App) {
 	api := app.Group("/auth", logger.New())
 	api.Post("/authenticate", authHandler.Authenticate)
 	api.Post("/refreshToken", authHandler.RefreshToken)
+	api.Post("/generateAccessToken", authHandler.GenerateAccessToken)
 }
