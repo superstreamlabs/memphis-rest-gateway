@@ -67,10 +67,10 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	var body models.AuthSchema
 	if err := c.BodyParser(&body); err != nil {
-		log.Errorf("Authenticate: %s", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Server error",
-		})
+		log.Warnf("Authenticate: %s", err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "message": "Some of your fields are not valid it is usually because you are missing some fields or you are sending wrong data types, also please notice that account_id field should be sent as a number rather than a string",
+        })
 	}
 	if err := utils.Validate(body); err != nil {
 		return c.Status(400).JSON(fiber.Map{

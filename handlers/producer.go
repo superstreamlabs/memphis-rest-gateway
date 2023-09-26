@@ -98,8 +98,12 @@ func CreateHandleMessage() func(*fiber.Ctx) error {
 			}
 			err = conn.Produce(stationName, "rest-gateway", message, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)})
 			if err != nil {
-				log.Errorf("CreateHandleMessage - produce: %s", err.Error())
-				c.Status(fiber.StatusInternalServerError)
+				if !strings.Contains(strings.ToLower(err.Error()), "schema validation") {
+					log.Errorf("CreateHandleMessage - produce: %s", err.Error())
+					c.Status(fiber.StatusInternalServerError)
+				} else {
+					c.Status(fiber.StatusBadRequest)
+				}
 				return c.JSON(&fiber.Map{
 					"success": false,
 					"error":   err.Error(),
@@ -198,10 +202,14 @@ func CreateHandleBatch() func(*fiber.Ctx) error {
 					continue
 				}
 				if err := conn.Produce(stationName, "rest-gateway", rawRes, []memphis.ProducerOpt{}, []memphis.ProduceOpt{memphis.MsgHeaders(hdrs)}); err != nil {
-					log.Errorf("CreateHandleBatch - produce: %s", err.Error())
+					if !strings.Contains(strings.ToLower(err.Error()), "schema validation") {
+						log.Errorf("CreateHandleBatch - produce: %s", err.Error())
+						c.Status(fiber.StatusInternalServerError)
+					} else {
+						c.Status(fiber.StatusBadRequest)
+					}
 					errCount++
 					allErr = append(allErr, err.Error())
-					c.Status(400)
 					return c.JSON(&fiber.Map{
 						"success": false,
 						"error":   allErr,
