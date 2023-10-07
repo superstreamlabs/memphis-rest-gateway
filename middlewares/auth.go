@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -46,7 +47,7 @@ func extractToken(authHeader string) (string, error) {
 	return tokenString, nil
 }
 
-func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
+func verifyJWTToken(tokenString string, secret string) (models.AuthSchema, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -89,6 +90,45 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 	return user, nil
 }
 
+func verifyAccessToken(accessKeyId string, secretKey string) (models.AuthSchema, error) {
+	accountId := 1
+	conn, err := handlers.Connect(configuration.ROOT_PASSWORD, configuration.ROOT_USER, configuration.CONNECTION_TOKEN, accountId)
+	if err != nil {
+		return models.AuthSchema{}, err
+	}
+
+	isValid, err := conn.ValidateAccessToken(accessKeyId, secretKey)
+	if err != nil {
+		log.Warnf("Authentication error - access key id and secret key is not valid", err)
+		return models.AuthSchema{}, err
+	}
+
+	if !isValid {
+		log.Warnf("Authentication error - invalid access key id or secret key")
+		return models.AuthSchema{}, errors.New("invalid access key id or secret key!")
+	}
+
+	var user models.AuthSchema
+	if !configuration.USER_PASS_BASED_AUTH {
+		user = models.AuthSchema{
+			Username:        configuration.ROOT_USER,
+			ConnectionToken: configuration.CONNECTION_TOKEN,
+			AccountId:       1,
+			AccessKeyID:     accessKeyId,
+			SecretKey:       secretKey,
+		}
+	} else {
+		user = models.AuthSchema{
+			Username:    configuration.ROOT_USER,
+			Password:    configuration.ROOT_PASSWORD,
+			AccountId:   1,
+			AccessKeyID: accessKeyId,
+			SecretKey:   secretKey,
+		}
+	}
+	return user, nil
+}
+
 func Authenticate(c *fiber.Ctx) error {
 	log := logger.GetLogger(c)
 	path := strings.ToLower(string(c.Context().URI().RequestURI()))
@@ -97,11 +137,15 @@ func Authenticate(c *fiber.Ctx) error {
 	path = strings.Split(path, "?")[0]
 	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
-		tokenString, err := extractToken(headers["Authorization"])
-		if err != nil || tokenString == "" {
-			tokenString = c.Query("authorization")
-			if tokenString == "" { // fallback - get the token from the query params
-				log.Warnf("Authentication error - jwt token is missing")
+
+		accessKayId := headers["Access-Key-Id"]
+		secretKay := headers["Secret-Key"]
+		jwtToken := headers["Authorization"]
+
+		if accessKayId != "" && secretKay != "" {
+			user, err = verifyAccessToken(accessKayId, secretKay)
+			if err != nil {
+				log.Warnf("Authentication error - access key id and secret key is not valid")
 				if configuration.DEBUG {
 					fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 				}
@@ -109,16 +153,30 @@ func Authenticate(c *fiber.Ctx) error {
 					"message": "Unauthorized",
 				})
 			}
-		}
-		user, err = verifyToken(tokenString, configuration.JWT_SECRET)
-		if err != nil {
-			log.Warnf("Authentication error - jwt token validation has failed")
-			if configuration.DEBUG {
-				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+		} else {
+			tokenString, err := extractToken(jwtToken)
+			if err != nil || tokenString == "" {
+				tokenString = c.Query("authorization")
+				if tokenString == "" { // fallback - get the token from the query params
+					log.Warnf("Authentication error - jwt token is missing")
+					if configuration.DEBUG {
+						fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+					}
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+						"message": "Unauthorized",
+					})
+				}
 			}
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"message": "Unauthorized",
-			})
+			user, err = verifyJWTToken(tokenString, configuration.JWT_SECRET)
+			if err != nil {
+				log.Warnf("Authentication error - jwt token validation has failed")
+				if configuration.DEBUG {
+					fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
+				}
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"message": "Unauthorized",
+				})
+			}
 		}
 	} else if path == "/auth/refreshtoken" {
 		var body models.RefreshTokenSchema
@@ -142,7 +200,7 @@ func Authenticate(c *fiber.Ctx) error {
 			})
 		}
 
-		user, err = verifyToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
+		user, err = verifyJWTToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - refresh token validation has failed")
 			if configuration.DEBUG {

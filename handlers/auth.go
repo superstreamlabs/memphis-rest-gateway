@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/memphisSingleton"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/memphisdev/memphis.go"
 	"github.com/nats-io/nats.go"
@@ -39,6 +41,51 @@ type refreshTokenExpiration struct {
 }
 
 var ConnectionsCache = map[string]map[string]Connection{}
+
+func getConnectionForUserData(userData models.AuthSchema) (*memphis.Conn, int, error) {
+	var err error
+	username := userData.Username
+	accountId := userData.AccountId
+	accountIdStr := strconv.Itoa(int(accountId))
+
+	var conn *memphis.Conn
+	if userData.AccessKeyID != "" && userData.SecretKey != "" {
+		conn = ConnectionsCache[accountIdStr][username].Connection
+	} else {
+		conn = ConnectionsCache[accountIdStr][userData.AccessKeyID].Connection
+	}
+
+	if conn == nil {
+		conn, err = Connect(userData.Password, username, userData.ConnectionToken, int(accountId))
+		if err != nil {
+			errMsg := strings.ToLower(err.Error())
+			if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+				log.Warnf("Could not establish new connection with the broker: Authentication error")
+				return nil, fiber.StatusUnauthorized, errors.New("Unauthorized")
+			}
+
+			log.Errorf("Could not establish new connection with the broker: %s", err.Error())
+			return nil, fiber.StatusInternalServerError, errors.New("Server error")
+		}
+
+		if ConnectionsCache[accountIdStr] == nil {
+			ConnectionsCacheLock.Lock()
+			ConnectionsCache[accountIdStr] = make(map[string]Connection)
+			ConnectionsCacheLock.Unlock()
+		}
+
+		ConnectionsCacheLock.Lock()
+		if userData.AccessKeyID != "" && userData.SecretKey != "" {
+			ConnectionsCache[accountIdStr][userData.AccessKeyID] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
+		} else {
+			ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
+		}
+
+		ConnectionsCacheLock.Unlock()
+	}
+
+	return conn, 0, nil
+}
 
 func Connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
 	if configuration.USER_PASS_BASED_AUTH {
@@ -279,6 +326,65 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		"expires_in":               tokenExpiry * 60 * 1000,
 		"jwt_refresh_token":        refreshToken,
 		"refresh_token_expires_in": refreshTokenExpiry * 60 * 1000,
+	})
+}
+
+func (ah AuthHandler) GenerateAccessToken(c *fiber.Ctx) error {
+	log := logger.GetLogger(c)
+	var body models.GenerateAccessTokenSchema
+	if err := c.BodyParser(&body); err != nil {
+		log.Errorf("GenerateAccessToken: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+	if err := utils.Validate(body); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"message": err,
+		})
+	}
+	userData, ok := c.Locals("userData").(models.AuthSchema)
+	if !ok {
+		log.Errorf("GenerateAccessToken: failed to get the user data from the middleware")
+		c.Status(fiber.StatusInternalServerError)
+		return c.JSON(&fiber.Map{
+			"success": false,
+			"error":   "Server error",
+		})
+	}
+
+	username := userData.Username
+	accountId := int(userData.AccountId)
+	password := userData.Password
+	connectionToken := userData.ConnectionToken
+
+	conn, err := Connect(password, username, connectionToken, accountId)
+	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
+			log.Warnf("GenerateAccessToken: Authentication error")
+			return c.Status(401).JSON(fiber.Map{
+				"message": "Unauthorized",
+			})
+		}
+
+		log.Errorf("GenerateAccessToken: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+
+	generatedTokenData, err := conn.GenerateAccessToken(username, body.Description)
+	if err != nil {
+		log.Errorf("GenerateAccessToken: %s", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Server error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"access_key_id": generatedTokenData.AccessKeyID,
+		"secret_key":    generatedTokenData.SecretKey,
 	})
 }
 

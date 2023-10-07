@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"rest-gateway/logger"
 	"rest-gateway/models"
-	"strconv"
 	"strings"
 	"time"
 
@@ -65,36 +64,14 @@ func ConsumeHandleMessage() func(*fiber.Ctx) error {
 				"error":   "Server error",
 			})
 		}
-		username := userData.Username
-		accountId := userData.AccountId
-		accountIdStr := strconv.Itoa(int(accountId))
-		conn := ConnectionsCache[accountIdStr][username].Connection
-		if conn == nil {
-			conn, err = Connect(userData.Password, username, userData.ConnectionToken, int(accountId))
-			if err != nil {
-				errMsg := strings.ToLower(err.Error())
-				if strings.Contains(errMsg, ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, ErrorMsgMissionAccountId) {
-					log.Warnf("Could not establish new connection with the broker: Authentication error")
-					return c.Status(401).JSON(fiber.Map{
-						"message": "Unauthorized",
-					})
-				}
 
-				log.Errorf("Could not establish new connection with the broker: %s", err.Error())
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"message": "Server error",
-				})
-			}
-			if ConnectionsCache[accountIdStr] == nil {
-				ConnectionsCacheLock.Lock()
-				ConnectionsCache[accountIdStr] = make(map[string]Connection)
-				ConnectionsCacheLock.Unlock()
-			}
-
-			ConnectionsCacheLock.Lock()
-			ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: userData.TokenExpiry}
-			ConnectionsCacheLock.Unlock()
+		conn, errorCode, err := getConnectionForUserData(userData)
+		if err != nil {
+			return c.Status(errorCode).JSON(fiber.Map{
+				"message": err.Error(),
+			})
 		}
+
 		reqBody.initializeDefaults()
 		msgs, err := conn.FetchMessages(stationName, reqBody.ConsumerName,
 			memphis.FetchBatchSize(reqBody.BatchSize),
