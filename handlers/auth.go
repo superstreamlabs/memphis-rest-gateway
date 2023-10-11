@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"rest-gateway/conf"
 	"rest-gateway/logger"
 	"rest-gateway/memphisSingleton"
@@ -69,8 +70,8 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		log.Warnf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "message": "Some of your fields are not valid it is usually because you are missing some fields or you are sending wrong data types, also please notice that account_id field should be sent as a number rather than a string",
-        })
+			"message": "Some of your fields are not valid it is usually because you are missing some fields or you are sending wrong data types, also please notice that account_id field should be sent as a number rather than a string",
+		})
 	}
 	if err := utils.Validate(body); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -194,7 +195,7 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	if err != nil {
 		return "", "", 0, 0, err
 	}
-
+	tokenExpiry := atClaims["exp"].(int64)
 	atClaims["token_exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
@@ -202,7 +203,6 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	if err != nil {
 		return "", "", 0, 0, err
 	}
-	tokenExpiry := atClaims["exp"].(int64)
 	refreshTokenExpiry := refreshTokenExpiration{
 		RefreshTokenExpiration: atClaims["exp"].(int64),
 		TokenExpiration:        atClaims["token_exp"].(int64),
@@ -305,6 +305,10 @@ func CleanConnectionsCache() {
 				delete(ConnectionsCache, t)
 				ConnectionsCacheLock.Unlock()
 			}
+		}
+
+		if !configuration.DEBUG {
+			fmt.Printf("Connections cache: %v\n", ConnectionsCache)
 		}
 	}
 }
