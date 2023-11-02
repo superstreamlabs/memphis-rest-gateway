@@ -20,6 +20,9 @@ func initializeLogger() *logger.Logger {
 			if configuration.USER_PASS_BASED_AUTH {
 				username = "$$memphis"
 				creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
+				if !configuration.CLOUD_ENV {
+					creds = configuration.ROOT_PASSWORD
+				}
 			}
 			l, err := logger.CreateLogger(configuration.MEMPHIS_HOST, username, creds)
 			if err != nil {
