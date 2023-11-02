@@ -24,7 +24,7 @@ node {
     else {
       stage('Build and push image to Docker Hub') {
         sh "docker buildx use builder"
-        sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${gitBranch} --platform linux/amd64,linux/arm64 ."
+        sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}-test:${gitBranch} --platform linux/amd64,linux/arm64 ."
       }
     }
 	
