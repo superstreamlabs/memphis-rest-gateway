@@ -97,7 +97,7 @@ func Authenticate(c *fiber.Ctx) error {
 	path = strings.Split(path, "?")[0]
 	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
-		tokenString, err := extractToken(headers["Authorization"])
+		tokenString, err := extractToken(headers["Authorization"][0])
 		if err != nil || tokenString == "" {
 			tokenString = c.Query("authorization")
 			if tokenString == "" { // fallback - get the token from the query params

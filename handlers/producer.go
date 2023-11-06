@@ -13,12 +13,12 @@ import (
 	"github.com/memphisdev/memphis.go"
 )
 
-func handleHeaders(headers map[string]string) (memphis.Headers, error) {
+func handleHeaders(headers map[string][]string) (memphis.Headers, error) {
 	hdrs := memphis.Headers{}
 	hdrs.New()
 
 	for key, value := range headers {
-		err := hdrs.Add(key, value)
+		err := hdrs.Add(key, value[0])
 		if err != nil {
 			return memphis.Headers{}, err
 		}
