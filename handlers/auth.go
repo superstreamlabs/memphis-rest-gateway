@@ -307,7 +307,7 @@ func CleanConnectionsCache() {
 			}
 		}
 
-		if !configuration.DEBUG {
+		if configuration.DEBUG {
 			fmt.Printf("Connections cache: %v\n", ConnectionsCache)
 		}
 	}
