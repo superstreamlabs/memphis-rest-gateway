@@ -38,8 +38,8 @@ node {
 	}
 	      
 	stage('Create new release') {
-          sh 'sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo'
-          sh 'sudo dnf install gh'
+          sh 'sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo -y'
+          sh 'sudo dnf install gh -y'
           withCredentials([string(credentialsId: 'gh_token', variable: 'GH_TOKEN')]) {
 	    sh "gh release create ${versionTag} --generate-notes"
           }
