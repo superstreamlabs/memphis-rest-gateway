@@ -97,6 +97,11 @@ func Authenticate(c *fiber.Ctx) error {
 	path = strings.Split(path, "?")[0]
 	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
+		if len(headers["Authorization"]) == 0 {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "Unauthorized",
+			})
+		}
 		tokenString, err := extractToken(headers["Authorization"][0])
 		if err != nil || tokenString == "" {
 			tokenString = c.Query("authorization")
