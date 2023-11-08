@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -12,8 +13,6 @@ import (
 
 	"github.com/nats-io/nats.go"
 )
-
-var mc *nats.Conn
 
 var nconn atomic.Pointer[nats.Conn]
 
@@ -29,17 +28,30 @@ func Put(conn *nats.Conn) {
 	nconn.Store(conn)
 }
 
-func connect(hostname, creds, username string) (*nats.Conn, error) {
-	configuration := conf.Get()
+func Connect(configuration conf.Configuration) (*nats.Conn, error) {
+	creds := configuration.CONNECTION_TOKEN
+	username := configuration.ROOT_USER
+	if configuration.USER_PASS_BASED_AUTH {
+		username = "$$memphis"
+		creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
+		if !configuration.CLOUD_ENV {
+			creds = configuration.ROOT_PASSWORD
+		}
+	}
+
+	return connect(configuration.MEMPHIS_HOST, username, creds, &configuration)
+}
+
+func connect(hostname, creds, username string, configuration *conf.Configuration) (*nats.Conn, error) {
 	var nc *nats.Conn
 	var err error
 
 	natsOpts := nats.Options{
-		Url:            hostname + ":6666",
+		Url:            hostname + ":" + strconv.Itoa(configuration.MEMPHIS_PORT),
 		AllowReconnect: true,
 		MaxReconnect:   10,
 		ReconnectWait:  3 * time.Second,
-		Name:           "MEMPHIS HTTP LOGGER",
+		Name:           configuration.MEMPHIS_CLIENT,
 	}
 
 	if configuration.USER_PASS_BASED_AUTH {
@@ -79,18 +91,4 @@ func connect(hostname, creds, username string) (*nats.Conn, error) {
 	Put(nc)
 
 	return nc, nil
-}
-
-func Connect(configuration conf.Configuration) (*nats.Conn, error) {
-	creds := configuration.CONNECTION_TOKEN
-	username := configuration.ROOT_USER
-	if configuration.USER_PASS_BASED_AUTH {
-		username = "$$memphis"
-		creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
-		if !configuration.CLOUD_ENV {
-			creds = configuration.ROOT_PASSWORD
-		}
-	}
-
-	return connect(configuration.MEMPHIS_HOST, username, creds)
 }
