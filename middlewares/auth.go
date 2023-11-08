@@ -157,7 +157,7 @@ func Authenticate(c *fiber.Ctx) error {
 				"message": "Unauthorized",
 			})
 		}
-	} else if !conf.Access().USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
+	} else if (!conf.Access().USER_PASS_BASED_AUTH) && !isAuthNeeded(path) {
 		user.AccountId = 1
 	}
 

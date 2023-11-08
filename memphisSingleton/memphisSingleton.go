@@ -42,7 +42,7 @@ func Connect(configuration conf.Configuration) (*nats.Conn, error) {
 	return connect(configuration.MEMPHIS_HOST, username, creds, &configuration)
 }
 
-func connect(hostname, creds, username string, configuration *conf.Configuration) (*nats.Conn, error) {
+func connect(hostname, username, creds string, configuration *conf.Configuration) (*nats.Conn, error) {
 	var nc *nats.Conn
 	var err error
 
@@ -53,13 +53,17 @@ func connect(hostname, creds, username string, configuration *conf.Configuration
 		ReconnectWait:  3 * time.Second,
 		Name:           configuration.MEMPHIS_CLIENT,
 	}
-
-	if configuration.USER_PASS_BASED_AUTH {
-		natsOpts.Password = creds
-		natsOpts.User = username
-	} else {
-		natsOpts.Token = username + "::" + creds
-	}
+	/*
+		if configuration.USER_PASS_BASED_AUTH {
+			natsOpts.Password = creds
+			natsOpts.User = username
+		} else {
+			natsOpts.Token = username + "::" + creds
+		}
+	*/
+	// TEMPORARY - HARDCODED user&password
+	natsOpts.User = "root"
+	natsOpts.Password = "memphis"
 
 	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
 		cert, err := tls.LoadX509KeyPair(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH)
