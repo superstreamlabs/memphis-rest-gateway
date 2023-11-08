@@ -9,12 +9,10 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/memphisdev/memphis.go v1.1.4
 	github.com/nats-io/nats.go v1.25.0
-	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
@@ -46,5 +44,4 @@ require (
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

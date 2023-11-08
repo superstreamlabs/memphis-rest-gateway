@@ -1,9 +1,5 @@
 package conf
 
-import (
-	"github.com/tkanos/gonfig"
-)
-
 type Configuration struct {
 	VERSION                        string
 	JWT_SECRET                     string
@@ -25,13 +21,6 @@ type Configuration struct {
 	CLOUD_ENV                      bool
 	REST_GW_UPDATES_SUBJ           string
 	MEMPHIS_CLIENT                 string
-}
-
-func GetConfig() Configuration {
-	configuration := Configuration{}
-	gonfig.GetConf("./conf/config.json", &configuration)
-
-	return configuration
 }
 
 var config = Configuration{}
