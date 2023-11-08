@@ -43,3 +43,7 @@ func Get() Configuration {
 func Put(cnf Configuration) {
 	config = cnf
 }
+
+func Access() *Configuration {
+	return &config
+}

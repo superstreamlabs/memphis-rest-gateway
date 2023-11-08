@@ -14,7 +14,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var configuration = conf.Get()
 var noNeedAuthRoutes = []string{
 	"/",
 	"/monitoring/status",
@@ -65,7 +64,7 @@ func verifyToken(tokenString string, secret string) (models.AuthSchema, error) {
 
 	var user models.AuthSchema
 	if _, ok := claims["username"].(string); ok {
-		if !configuration.USER_PASS_BASED_AUTH {
+		if !conf.Access().USER_PASS_BASED_AUTH {
 			user = models.AuthSchema{
 				Username:        claims["username"].(string),
 				ConnectionToken: claims["connection_token"].(string),
@@ -108,7 +107,7 @@ func Authenticate(c *fiber.Ctx) error {
 			tokenString = c.Query("authorization")
 			if tokenString == "" { // fallback - get the token from the query params
 				log.Warnf("Authentication error - jwt token is missing")
-				if configuration.DEBUG {
+				if conf.Access().DEBUG {
 					fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 				}
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -116,10 +115,10 @@ func Authenticate(c *fiber.Ctx) error {
 				})
 			}
 		}
-		user, err = verifyToken(tokenString, configuration.JWT_SECRET)
+		user, err = verifyToken(tokenString, conf.Access().JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - jwt token validation has failed")
-			if configuration.DEBUG {
+			if conf.Access().DEBUG {
 				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -130,7 +129,7 @@ func Authenticate(c *fiber.Ctx) error {
 		var body models.RefreshTokenSchema
 		if err := c.BodyParser(&body); err != nil {
 			log.Errorf("Authenticate: %s", err.Error())
-			if configuration.DEBUG {
+			if conf.Access().DEBUG {
 				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -140,7 +139,7 @@ func Authenticate(c *fiber.Ctx) error {
 
 		if body.JwtRefreshToken == "" {
 			log.Warnf("Authentication error - refresh token is missing")
-			if configuration.DEBUG {
+			if conf.Access().DEBUG {
 				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -148,17 +147,17 @@ func Authenticate(c *fiber.Ctx) error {
 			})
 		}
 
-		user, err = verifyToken(body.JwtRefreshToken, configuration.REFRESH_JWT_SECRET)
+		user, err = verifyToken(body.JwtRefreshToken, conf.Access().REFRESH_JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - refresh token validation has failed")
-			if configuration.DEBUG {
+			if conf.Access().DEBUG {
 				fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
 			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Unauthorized",
 			})
 		}
-	} else if !configuration.USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
+	} else if !conf.Access().USER_PASS_BASED_AUTH && !isAuthNeeded(path) {
 		user.AccountId = 1
 	}
 
@@ -166,7 +165,7 @@ func Authenticate(c *fiber.Ctx) error {
 	if strings.HasSuffix(path, "/produce/single") || strings.HasSuffix(path, "/produce/batch") || path == "/auth/refreshtoken" {
 		if user.Username == "" {
 			accountId := 1
-			conn, err := handlers.Connect(configuration.ROOT_PASSWORD, configuration.ROOT_USER, configuration.CONNECTION_TOKEN, accountId)
+			conn, err := handlers.Connect(conf.Access().ROOT_PASSWORD, conf.Access().ROOT_USER, conf.Access().CONNECTION_TOKEN, accountId)
 			if err != nil {
 				errMsg := strings.ToLower(err.Error())
 				if strings.Contains(errMsg, handlers.ErrorMsgAuthorizationViolation) || strings.Contains(errMsg, "token") || strings.Contains(errMsg, handlers.ErrorMsgMissionAccountId) {
@@ -182,18 +181,18 @@ func Authenticate(c *fiber.Ctx) error {
 				handlers.ConnectionsCacheLock.Unlock()
 			}
 
-			handlers.ConnectionsCache["1"][configuration.ROOT_USER] = handlers.Connection{Connection: conn, ExpirationTime: int64(user.TokenExpiryMins)}
+			handlers.ConnectionsCache["1"][conf.Access().ROOT_USER] = handlers.Connection{Connection: conn, ExpirationTime: int64(user.TokenExpiryMins)}
 
-			if !configuration.USER_PASS_BASED_AUTH {
+			if !conf.Access().USER_PASS_BASED_AUTH {
 				user = models.AuthSchema{
-					Username:        configuration.ROOT_USER,
-					ConnectionToken: configuration.CONNECTION_TOKEN,
+					Username:        conf.Access().ROOT_USER,
+					ConnectionToken: conf.Access().CONNECTION_TOKEN,
 					AccountId:       1,
 				}
 			} else {
 				user = models.AuthSchema{
-					Username:  configuration.ROOT_USER,
-					Password:  configuration.ROOT_PASSWORD,
+					Username:  conf.Access().ROOT_USER,
+					Password:  conf.Access().ROOT_PASSWORD,
 					AccountId: 1,
 				}
 			}

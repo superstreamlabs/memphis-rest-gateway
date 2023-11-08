@@ -20,7 +20,6 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-var configuration = conf.Get()
 var ConnectionsCacheLock sync.Mutex
 
 const (
@@ -43,22 +42,22 @@ type refreshTokenExpiration struct {
 var ConnectionsCache = map[string]map[string]Connection{}
 
 func Connect(password, username, connectionToken string, accountId int) (*memphis.Conn, error) {
-	if configuration.USER_PASS_BASED_AUTH {
+	if conf.Access().USER_PASS_BASED_AUTH {
 		if accountId == 0 {
 			accountId = 1
 		}
 	}
 	var err error
 	opts := []memphis.Option{memphis.Reconnect(true), memphis.MaxReconnect(10), memphis.ReconnectInterval(3 * time.Second)}
-	if configuration.USER_PASS_BASED_AUTH {
+	if conf.Access().USER_PASS_BASED_AUTH {
 		opts = append(opts, memphis.Password(password), memphis.AccountId(accountId))
 	} else {
 		opts = append(opts, memphis.ConnectionToken(connectionToken))
 	}
-	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-		opts = append(opts, memphis.Tls(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH, configuration.ROOT_CA_PATH))
+	if conf.Access().CLIENT_CERT_PATH != "" && conf.Access().CLIENT_KEY_PATH != "" && conf.Access().ROOT_CA_PATH != "" {
+		opts = append(opts, memphis.Tls(conf.Access().CLIENT_CERT_PATH, conf.Access().CLIENT_KEY_PATH, conf.Access().ROOT_CA_PATH))
 	}
-	conn, err := memphis.Connect(configuration.MEMPHIS_HOST, username, opts...)
+	conn, err := memphis.Connect(conf.Access().MEMPHIS_HOST, username, opts...)
 	if err != nil {
 		return conn, err
 	}
@@ -160,7 +159,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	}
 
 	// send to other rest GWs to update their cache
-	err = mc.Publish(configuration.REST_GW_UPDATES_SUBJ, msg)
+	err = mc.Publish(conf.Access().REST_GW_UPDATES_SUBJ, msg)
 	if err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -178,11 +177,11 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, accountId int, password, connectionToken string) (string, string, int64, int64, error) {
 	if tokenExpiryMins <= 0 {
-		tokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+		tokenExpiryMins = conf.Access().JWT_EXPIRES_IN_MINUTES
 	}
 
 	if refreshTokenExpiryMins <= 0 {
-		refreshTokenExpiryMins = configuration.JWT_EXPIRES_IN_MINUTES
+		refreshTokenExpiryMins = conf.Access().JWT_EXPIRES_IN_MINUTES
 	}
 
 	atClaims := jwt.MapClaims{}
@@ -192,7 +191,7 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	atClaims["connection_token"] = connectionToken
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	token, err := at.SignedString([]byte(configuration.JWT_SECRET))
+	token, err := at.SignedString([]byte(conf.Access().JWT_SECRET))
 	if err != nil {
 		return "", "", 0, 0, err
 	}
@@ -200,7 +199,7 @@ func createTokens(tokenExpiryMins, refreshTokenExpiryMins int, username string, 
 	atClaims["token_exp"] = time.Now().Add(time.Minute * time.Duration(tokenExpiryMins)).Unix()
 	atClaims["exp"] = time.Now().Add(time.Minute * time.Duration(refreshTokenExpiryMins)).Unix()
 	at = jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	refreshToken, err := at.SignedString([]byte(configuration.REFRESH_JWT_SECRET))
+	refreshToken, err := at.SignedString([]byte(conf.Access().REFRESH_JWT_SECRET))
 	if err != nil {
 		return "", "", 0, 0, err
 	}
@@ -308,7 +307,7 @@ func CleanConnectionsCache() {
 			}
 		}
 
-		if configuration.DEBUG {
+		if conf.Access().DEBUG {
 			fmt.Printf("Connections cache: %v\n", ConnectionsCache)
 		}
 	}
@@ -320,7 +319,7 @@ func ListenForUpdates(log *logger.Logger) error {
 		return err
 	}
 
-	_, err = mc.Subscribe(configuration.REST_GW_UPDATES_SUBJ, func(msg *nats.Msg) {
+	_, err = mc.Subscribe(conf.Access().REST_GW_UPDATES_SUBJ, func(msg *nats.Msg) {
 		var update models.RestGwUpdate
 		err := json.Unmarshal(msg.Data, &update)
 		if err != nil {
