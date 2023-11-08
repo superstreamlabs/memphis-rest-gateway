@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"rest-gateway/logger"
-	"rest-gateway/models"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/memphisdev/memphis-rest-gateway/logger"
+	"github.com/memphisdev/memphis-rest-gateway/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/memphisdev/memphis.go"

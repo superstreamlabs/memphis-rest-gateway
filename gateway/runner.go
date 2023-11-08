@@ -1,16 +1,29 @@
-package main
+package gateway
 
 import (
 	"fmt"
-	"rest-gateway/conf"
-	"rest-gateway/handlers"
-	"rest-gateway/logger"
-	"rest-gateway/router"
-	"time"
+
+	"github.com/memphisdev/memphis-rest-gateway/conf"
+	"github.com/memphisdev/memphis-rest-gateway/handlers"
+	"github.com/memphisdev/memphis-rest-gateway/logger"
+	"github.com/memphisdev/memphis-rest-gateway/router"
 )
 
+func Run(cnf conf.Configuration, lgr *logger.Logger) error {
+	err := handlers.ListenForUpdates(lgr)
+	if err != nil {
+		return fmt.Errorf("Error while listening for updates - %s", err.Error())
+	}
+	go handlers.CleanConnectionsCache()
+	app := router.SetupRoutes(lgr)
+	lgr.Noticef("Memphis REST gateway is up and running")
+	lgr.Noticef("Version %s", cnf.VERSION)
+	return app.Listen(":" + cnf.HTTP_PORT)
+}
+
+/*
 func initializeLogger() *logger.Logger {
-	configuration := conf.GetConfig()
+	configuration := conf.Get()
 	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
@@ -36,7 +49,7 @@ func initializeLogger() *logger.Logger {
 }
 
 func main() {
-	configuration := conf.GetConfig()
+	configuration := conf.Get()
 	l := initializeLogger()
 	err := handlers.ListenForUpdates(l)
 	if err != nil {
@@ -48,3 +61,4 @@ func main() {
 	l.Noticef("Version %s", configuration.VERSION)
 	app.Listen(":" + configuration.HTTP_PORT)
 }
+*/

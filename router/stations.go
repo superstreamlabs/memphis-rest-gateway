@@ -1,7 +1,7 @@
 package router
 
 import (
-	"rest-gateway/handlers"
+	"github.com/memphisdev/memphis-rest-gateway/handlers"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"

@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"rest-gateway/conf"
-	"rest-gateway/memphisSingleton"
+	"sync/atomic"
+
+	"github.com/dapr/kit/logger"
+	"github.com/memphisdev/memphis-rest-gateway/conf"
+	"github.com/memphisdev/memphis-rest-gateway/memphisSingleton"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nats-io/nats.go"
@@ -37,7 +40,7 @@ type Logger struct {
 
 func (sw streamWriter) Write(p []byte) (int, error) {
 	os.Stderr.Write(p)
-	configuration := conf.GetConfig()
+	configuration := conf.Get()
 	if !configuration.CLOUD_ENV {
 		logLabelToSubjectMap := map[string]string{"INF": syslogsInfoSubject,
 			"WRN": syslogsWarnSubject,
@@ -59,7 +62,7 @@ func (sw streamWriter) Write(p []byte) (int, error) {
 }
 
 func CreateLogger(hostname string, username string, creds string) (*Logger, error) {
-	mc, err := memphisSingleton.GetMemphisConnection(hostname, creds, username)
+	mc, err := memphisSingleton.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -118,4 +121,14 @@ func (l *Logger) Debugf(format string, v ...interface{}) {
 // Tracef logs a trace statement
 func (l *Logger) Tracef(format string, v ...interface{}) {
 	l.logger.Printf(traceLabel+format, v...)
+}
+
+var lgr atomic.Pointer[logger.Logger]
+
+func Get() *logger.Logger {
+	return lgr.Load()
+}
+
+func Put(logger *logger.Logger) {
+	lgr.Store(logger)
 }

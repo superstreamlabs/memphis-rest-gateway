@@ -1,9 +1,9 @@
 package router
 
 import (
-	"rest-gateway/logger"
-	"rest-gateway/middlewares"
-	"rest-gateway/utils"
+	"github.com/memphisdev/memphis-rest-gateway/logger"
+	"github.com/memphisdev/memphis-rest-gateway/middlewares"
+	"github.com/memphisdev/memphis-rest-gateway/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

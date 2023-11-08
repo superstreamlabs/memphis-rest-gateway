@@ -1,14 +1,15 @@
 package router
 
 import (
+	"github.com/memphisdev/memphis-rest-gateway/conf"
+	"github.com/memphisdev/memphis-rest-gateway/handlers"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"rest-gateway/conf"
-	"rest-gateway/handlers"
 )
 
 func InitilizeMonitoringRoutes(app *fiber.App) {
-	configuration := conf.GetConfig()
+	configuration := conf.Get()
 
 	monitoringHandlerHandler := handlers.MonitoringHandler{}
 	api := app.Group("/monitoring", logger.New())

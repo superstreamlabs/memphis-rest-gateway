@@ -51,7 +51,7 @@ Common use cases for the REST Gateway are&#x20;
 ![REST gateway](https://user-images.githubusercontent.com/70286779/212469259-9f092921-63fa-4121-83cf-90f745d4b952.jpeg)
 
 
-For scale requirements, the "REST gateway" component is separate from the brokers' pod and can scale out individually.
+[NEED REVISION!!!] - "REST gateway" component is part of [Memphis protocol adapter](https://github.com/memphisdev/memphis-protocol-adapter) process.
 
 ## Security Mechanisms
 
@@ -69,7 +69,7 @@ Soon.
 ![Sequence diagram](https://user-images.githubusercontent.com/70286779/212469294-ebf2da3f-af30-46bc-bb42-ef860159356e.jpeg)
 
 
-## Getting started
+## [NEED REVISION!!!] Getting started
 
 If you are using Memphis **Open-Source** version, please make sure your 'REST gateway' component is exposed either through localhost or public IP.<br><br>
 If you are using Memphis **Cloud**, it is already in.

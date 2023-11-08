@@ -3,65 +3,94 @@ package memphisSingleton
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"os"
-	"rest-gateway/conf"
+	"sync/atomic"
 	"time"
+
+	"github.com/memphisdev/memphis-rest-gateway/conf"
 
 	"github.com/nats-io/nats.go"
 )
 
 var mc *nats.Conn
 
-func GetMemphisConnection(hostname, creds, username string) (*nats.Conn, error) {
-	if mc == nil {
-		configuration := conf.GetConfig()
-		var nc *nats.Conn
-		var err error
+var nconn atomic.Pointer[nats.Conn]
 
-		natsOpts := nats.Options{
-			Url:            hostname + ":6666",
-			AllowReconnect: true,
-			MaxReconnect:   10,
-			ReconnectWait:  3 * time.Second,
-			Name:           "MEMPHIS HTTP LOGGER",
-		}
+func Get() (*nats.Conn, error) {
+	if conn := nconn.Load(); conn != nil {
+		return conn, nil
+	}
 
-		if configuration.USER_PASS_BASED_AUTH {
-			natsOpts.Password = creds
-			natsOpts.User = username
-		} else {
-			natsOpts.Token = username + "::" + creds
-		}
+	return nil, fmt.Errorf("not connected to memphis")
+}
 
-		if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
-			cert, err := tls.LoadX509KeyPair(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH)
-			if err != nil {
-				return nil, err
-			}
-			cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
-			if err != nil {
-				return nil, err
-			}
-			TLSConfig := &tls.Config{MinVersion: tls.VersionTLS12}
-			TLSConfig.Certificates = []tls.Certificate{cert}
-			certs := x509.NewCertPool()
+func Put(conn *nats.Conn) {
+	nconn.Store(conn)
+}
 
-			pemData, err := os.ReadFile(configuration.ROOT_CA_PATH)
-			if err != nil {
-				return nil, err
-			}
-			certs.AppendCertsFromPEM(pemData)
-			TLSConfig.RootCAs = certs
-			natsOpts.TLSConfig = TLSConfig
-		}
+func connect(hostname, creds, username string) (*nats.Conn, error) {
+	configuration := conf.Get()
+	var nc *nats.Conn
+	var err error
 
-		nc, err = natsOpts.Connect()
+	natsOpts := nats.Options{
+		Url:            hostname + ":6666",
+		AllowReconnect: true,
+		MaxReconnect:   10,
+		ReconnectWait:  3 * time.Second,
+		Name:           "MEMPHIS HTTP LOGGER",
+	}
+
+	if configuration.USER_PASS_BASED_AUTH {
+		natsOpts.Password = creds
+		natsOpts.User = username
+	} else {
+		natsOpts.Token = username + "::" + creds
+	}
+
+	if configuration.CLIENT_CERT_PATH != "" && configuration.CLIENT_KEY_PATH != "" && configuration.ROOT_CA_PATH != "" {
+		cert, err := tls.LoadX509KeyPair(configuration.CLIENT_CERT_PATH, configuration.CLIENT_KEY_PATH)
 		if err != nil {
 			return nil, err
 		}
+		cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			return nil, err
+		}
+		TLSConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+		TLSConfig.Certificates = []tls.Certificate{cert}
+		certs := x509.NewCertPool()
 
-		mc = nc
+		pemData, err := os.ReadFile(configuration.ROOT_CA_PATH)
+		if err != nil {
+			return nil, err
+		}
+		certs.AppendCertsFromPEM(pemData)
+		TLSConfig.RootCAs = certs
+		natsOpts.TLSConfig = TLSConfig
 	}
 
-	return mc, nil
+	nc, err = natsOpts.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	Put(nc)
+
+	return nc, nil
+}
+
+func Connect(configuration conf.Configuration) (*nats.Conn, error) {
+	creds := configuration.CONNECTION_TOKEN
+	username := configuration.ROOT_USER
+	if configuration.USER_PASS_BASED_AUTH {
+		username = "$$memphis"
+		creds = configuration.CONNECTION_TOKEN + "_" + configuration.ROOT_PASSWORD
+		if !configuration.CLOUD_ENV {
+			creds = configuration.ROOT_PASSWORD
+		}
+	}
+
+	return connect(configuration.MEMPHIS_HOST, username, creds)
 }

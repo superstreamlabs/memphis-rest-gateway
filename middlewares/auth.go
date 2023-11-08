@@ -3,17 +3,18 @@ package middlewares
 import (
 	"errors"
 	"fmt"
-	"rest-gateway/conf"
-	"rest-gateway/handlers"
-	"rest-gateway/logger"
-	"rest-gateway/models"
 	"strings"
+
+	"github.com/memphisdev/memphis-rest-gateway/conf"
+	"github.com/memphisdev/memphis-rest-gateway/handlers"
+	"github.com/memphisdev/memphis-rest-gateway/logger"
+	"github.com/memphisdev/memphis-rest-gateway/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var configuration = conf.GetConfig()
+var configuration = conf.Get()
 var noNeedAuthRoutes = []string{
 	"/",
 	"/monitoring/status",

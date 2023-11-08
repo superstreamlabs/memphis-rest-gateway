@@ -3,15 +3,16 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"rest-gateway/conf"
-	"rest-gateway/logger"
-	"rest-gateway/memphisSingleton"
-	"rest-gateway/models"
-	"rest-gateway/utils"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/memphisdev/memphis-rest-gateway/conf"
+	"github.com/memphisdev/memphis-rest-gateway/logger"
+	"github.com/memphisdev/memphis-rest-gateway/memphisSingleton"
+	"github.com/memphisdev/memphis-rest-gateway/models"
+	"github.com/memphisdev/memphis-rest-gateway/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
@@ -19,7 +20,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-var configuration = conf.GetConfig()
+var configuration = conf.Get()
 var ConnectionsCacheLock sync.Mutex
 
 const (
@@ -131,7 +132,7 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 	ConnectionsCache[accountIdStr][username] = Connection{Connection: conn, ExpirationTime: tokenExpiry}
 	ConnectionsCacheLock.Unlock()
 
-	mc, err := memphisSingleton.GetMemphisConnection("", "", "") // already initialized on logger creation
+	mc, err := memphisSingleton.Get()
 	if err != nil {
 		log.Errorf("Authenticate: %s", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -314,7 +315,7 @@ func CleanConnectionsCache() {
 }
 
 func ListenForUpdates(log *logger.Logger) error {
-	mc, err := memphisSingleton.GetMemphisConnection("", "", "") // already initialized on logger creation
+	mc, err := memphisSingleton.Get()
 	if err != nil {
 		return err
 	}

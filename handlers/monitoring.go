@@ -3,10 +3,11 @@ package handlers
 import (
 	"os"
 	"os/exec"
-	"rest-gateway/logger"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/memphisdev/memphis-rest-gateway/logger"
 
 	"github.com/gofiber/fiber/v2"
 )

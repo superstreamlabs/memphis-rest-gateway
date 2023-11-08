@@ -1,6 +1,20 @@
 {
   "VERSION": "1.2.3",
+  "MEMPHIS_HOST": "localhost",
+  "MEMPHIS_PORT": 6666,
+  "MEMPHIS_CLIENT": "PROTO ADAPTER",
+  "USER_PASS_BASED_AUTH": "true",
+  "ROOT_PASSWORD": "memphis",
+  "ROOT_USER": "root",
+  "CONNECTION_TOKEN": "memphis",
+  "CLIENT_CERT_PATH": "",
+  "CLIENT_KEY_PATH": "",
+  "ROOT_CA_PATH": "",
   "JWT_EXPIRES_IN_MINUTES": 15,
   "REFRESH_JWT_EXPIRES_IN_MINUTES": 300,
-  "REST_GW_UPDATES_SUBJ": "$memphis_restgw_updates"
+  "REST_GW_UPDATES_SUBJ": "$memphis_restgw_updates",
+  "HTTP_PORT": "4444",
+  "DEV_ENV": "true",
+  "DEBUG": "true",
+  "CLOUD_ENV": "false"
 }

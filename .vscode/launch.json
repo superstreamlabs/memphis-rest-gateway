@@ -15,6 +15,8 @@
                 "CONNECTION_TOKEN": "memphis",
                 "ROOT_USER": "root",
                 "MEMPHIS_HOST": "localhost",
+                "MEMPHIS_PORT": 6666,
+                "MEMPHIS_CLIENT": "PROTO ADAPTER",
                 "HTTP_PORT": "4444",
                 "CLIENT_CERT_PATH": "",
                 "CLIENT_KEY_PATH": "",
