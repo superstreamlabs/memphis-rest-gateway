@@ -2,8 +2,6 @@ module github.com/memphisdev/memphis-rest-gateway
 
 go 1.19
 
-replace github.com/memphisdev/memphis-rest-gateway => ../../g41797/memphis-rest-gateway
-
 require (
 	github.com/g41797/sputnik v0.0.17
 	github.com/go-playground/validator/v10 v10.11.1
