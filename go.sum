@@ -4,6 +4,10 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/g41797/kissngoqueue v0.1.5 h1:UrnpxbjOnTnKj/EqpbLA9LjhYkHjnLWMZQqsz3AOBG8=
+github.com/g41797/kissngoqueue v0.1.5/go.mod h1:c1mGfrNWfEP2cHeX04Iji8qYGQevvUmZw5SPZM5M9Cs=
+github.com/g41797/sputnik v0.0.17 h1:HBDFPgpMBaZHD1YY5Vjtfy6IVVigq31lN6WmK3KmG48=
+github.com/g41797/sputnik v0.0.17/go.mod h1:nhuXjBz9tK1Myi+LVaTpLodWdMuquayrdcgJO6O+5dA=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.2.3/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre4VKE=

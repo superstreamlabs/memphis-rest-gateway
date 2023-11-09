@@ -5,6 +5,7 @@ go 1.19
 replace github.com/memphisdev/memphis-rest-gateway => ../../g41797/memphis-rest-gateway
 
 require (
+	github.com/g41797/sputnik v0.0.17
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -14,6 +15,7 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/g41797/kissngoqueue v0.1.5 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
