@@ -88,7 +88,5 @@ func connect(hostname, username, creds string, configuration *conf.Configuration
 		return nil, err
 	}
 
-	Put(nc)
-
 	return nc, nil
 }

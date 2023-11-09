@@ -6,10 +6,14 @@ import (
 	"github.com/memphisdev/memphis-rest-gateway/conf"
 	"github.com/memphisdev/memphis-rest-gateway/handlers"
 	"github.com/memphisdev/memphis-rest-gateway/logger"
+	mconntr "github.com/memphisdev/memphis-rest-gateway/memphisSingleton"
 	"github.com/memphisdev/memphis-rest-gateway/router"
+	"github.com/nats-io/nats.go"
 )
 
-func Run(cnf conf.Configuration, lgr *logger.Logger) error {
+func Run(cnf conf.Configuration, lgr *logger.Logger, conn *nats.Conn) error {
+	mconntr.Put(conn)
+
 	err := handlers.ListenForUpdates(lgr)
 	if err != nil {
 		return fmt.Errorf("Error while listening for updates - %s", err.Error())
