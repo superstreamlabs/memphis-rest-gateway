@@ -2,7 +2,7 @@
   "VERSION": "1.2.3",
   "MEMPHIS_HOST": "localhost",
   "MEMPHIS_PORT": 6666,
-  "MEMPHIS_CLIENT": "PROTO ADAPTER",
+  "MEMPHIS_CLIENT": "MEMPHIS HTTP LOGGER",
   "USER_PASS_BASED_AUTH": "true",
   "ROOT_PASSWORD": "memphis",
   "ROOT_USER": "root",
