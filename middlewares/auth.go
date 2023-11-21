@@ -97,24 +97,23 @@ func Authenticate(c *fiber.Ctx) error {
 	path = strings.Split(path, "?")[0]
 	if isAuthNeeded(path) {
 		headers := c.GetReqHeaders()
+		tokenString := ""
 		if len(headers["Authorization"]) == 0 {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"message": "Unauthorized",
-			})
-		}
-		tokenString, err := extractToken(headers["Authorization"][0])
-		if err != nil || tokenString == "" {
 			tokenString = c.Query("authorization")
-			if tokenString == "" { // fallback - get the token from the query params
-				log.Warnf("Authentication error - jwt token is missing")
-				if configuration.DEBUG {
-					fmt.Printf("Method: %s, Path: %s, IP: %s\nBody: %s\n", c.Method(), c.Path(), c.IP(), string(c.Body()))
-				}
+			if tokenString == "" {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"message": "Unauthorized",
+				})
+			}
+		} else {
+			tokenString, err = extractToken(headers["Authorization"][0])
+			if err != nil || tokenString == "" {
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 					"message": "Unauthorized",
 				})
 			}
 		}
+		
 		user, err = verifyToken(tokenString, configuration.JWT_SECRET)
 		if err != nil {
 			log.Warnf("Authentication error - jwt token validation has failed")
