@@ -3,7 +3,7 @@ def imageName = "memphis-rest-gateway"
 def gitURL = "git@github.com:Memphisdev/memphis-rest-gateway.git"
 def repoUrlPrefix = "memphisos"
 
-node {
+node ("memphis-jenkins-big-fleet,") {
   git credentialsId: 'main-github', url: gitURL, branch: gitBranch
   def versionTag = readFile "./version.conf"
   
