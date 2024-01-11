@@ -6,7 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/memphisdev/memphis.go v1.3.2-beta.1
+	github.com/memphisdev/memphis.go v1.3.1
 	github.com/nats-io/nats.go v1.31.0
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 )
