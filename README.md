@@ -79,7 +79,7 @@ If you are using Memphis **Cloud**, it is already in.
 Please create a JWT token, which will be part of each produce/consume request. For authentication purposes.
 
 * The generated JWT will encapsulate all the needed information for the broker to ensure the requester is authenticated to communicate with Memphis.
-* JWT token (by design) has an expiration time. Token refreshment can take place progrematically, but as it is often used to integrate memphis with other systems which are not supporting JWT refreshment, a workaround to overcome it would be to set a very high value in the `token_expiry_in_minutes`.
+* JWT token (by design) has an expiration time. Token refreshment can take place programmatically, but as it is often used to integrate memphis with other systems which are not supporting JWT refreshment, a workaround to overcome it would be to set a very high value in the `token_expiry_in_minutes`.
 * The default expiry time is 15 minutes.
 
 **Cloud (Using body params)**<br>
