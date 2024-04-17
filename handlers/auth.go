@@ -169,9 +169,9 @@ func (ah AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
-		"expires_in":               tokenExpiry * 60 * 1000,
+		"expires_at":               tokenExpiry,
 		"jwt_refresh_token":        refreshToken,
-		"refresh_token_expires_in": refreshTokenExpiry * 60 * 1000,
+		"refresh_token_expires_at": refreshTokenExpiry,
 	})
 }
 
@@ -276,9 +276,9 @@ func (ah AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	ConnectionsCacheLock.Unlock()
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"jwt":                      token,
-		"expires_in":               tokenExpiry * 60 * 1000,
+		"expires_at":               tokenExpiry,
 		"jwt_refresh_token":        refreshToken,
-		"refresh_token_expires_in": refreshTokenExpiry * 60 * 1000,
+		"refresh_token_expires_at": refreshTokenExpiry,
 	})
 }
 
